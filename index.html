@@ -1,0 +1,1624 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>數感訓練 (Number Sense App)</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: ['class', '[data-theme="dark"]'],
+      theme: {
+        extend: {
+          colors: {
+            theme: {
+              bg: 'var(--th-bg)',
+              card: 'var(--th-card)',
+              border: 'var(--th-border)',
+              hover: 'var(--th-hover)',
+              text: 'var(--th-text)',
+              txtcard: 'var(--th-txtcard)',
+              txtmuted: 'var(--th-txtmuted)',
+              muted: 'var(--th-muted)',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* 主題 CSS 變數定義 */
+    :root {
+      --th-bg: #f8fafc;        /* slate-50 */
+      --th-card: #ffffff;      /* white */
+      --th-border: #e2e8f0;    /* slate-200 */
+      --th-hover: #f1f5f9;     /* slate-100 */
+      --th-text: #0f172a;      /* slate-900 */
+      --th-txtcard: #1e293b;   /* slate-800 */
+      --th-txtmuted: #64748b;  /* slate-500 */
+      --th-muted: #f1f5f9;     /* slate-100 */
+    }
+
+    [data-theme="dark"] {
+      --th-bg: #0f172a;        /* slate-900 */
+      --th-card: #1e293b;      /* slate-800 */
+      --th-border: #334155;    /* slate-700 */
+      --th-hover: #475569;     /* slate-600 */
+      --th-text: #f8fafc;      /* slate-50 */
+      --th-txtcard: #f1f5f9;   /* slate-100 */
+      --th-txtmuted: #94a3b8;  /* slate-400 */
+      --th-muted: #334155;     /* slate-700 */
+    }
+
+    [data-theme="pink"] {
+      --th-bg: #fdf2f8;        /* pink-50 */
+      --th-card: #ffffff;      /* white */
+      --th-border: #fce7f3;    /* pink-100 */
+      --th-hover: #fbcfe8;     /* pink-200 */
+      --th-text: #831843;      /* pink-900 */
+      --th-txtcard: #9d174d;   /* pink-800 */
+      --th-txtmuted: #db2777;  /* pink-600 */
+      --th-muted: #fce7f3;     /* pink-100 */
+    }
+
+    /* 訊息框共用樣式 (適應各主題) */
+    .msg-success { background-color: rgba(16, 185, 129, 0.1); color: #047857; }
+    [data-theme="dark"] .msg-success { color: #34d399; }
+    [data-theme="pink"] .msg-success { background-color: rgba(21, 128, 61, 0.1); color: #15803d; }
+    
+    .msg-error { background-color: rgba(225, 29, 72, 0.1); color: #be123c; }
+    [data-theme="dark"] .msg-error { color: #fb7185; }
+    [data-theme="pink"] .msg-error { color: #be123c; }
+    
+    .msg-info { background-color: rgba(59, 130, 246, 0.1); color: #1d4ed8; }
+    [data-theme="dark"] .msg-info { color: #60a5fa; }
+    [data-theme="pink"] .msg-info { background-color: rgba(219, 39, 119, 0.1); color: #be185d; }
+
+    /* 動畫設定 */
+    @keyframes slideInFromBottom { from { transform: translateY(1rem); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes zoomIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    @keyframes slideInFromTop { from { transform: translateY(-0.5rem); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    
+    .animate-in { animation-duration: 500ms; animation-fill-mode: both; animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+    .slide-in-from-bottom-4.fade-in { animation-name: slideInFromBottom, fadeIn; }
+    .zoom-in.fade-in { animation-name: zoomIn, fadeIn; }
+    .slide-in-from-top-2 { animation-name: slideInFromTop, fadeIn; }
+    .fade-in { animation-name: fadeIn; }
+
+    body { overscroll-behavior-y: none; background-color: var(--th-bg); color: var(--th-text); transition: background-color 0.3s, color 0.3s; }
+  </style>
+</head>
+<body class="font-sans selection:bg-indigo-500/30">
+
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    // --- 圖示元件 (Icons) ---
+    const IconHome = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
+    const IconPlay = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>;
+    const IconRefresh = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>;
+    const IconCheck = () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>;
+    const IconSun = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>;
+    const IconMoon = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>;
+    const IconPalette = () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>;
+
+    // --- 數學工具函式 ---
+    const getPrimeFactors = (num) => {
+      let factors = []; let d = 2; let n = num;
+      while (n > 1) {
+        while (n % d === 0) { factors.push(d); n /= d; }
+        d++; if (d * d > n) { if (n > 1) factors.push(n); break; }
+      }
+      return factors;
+    };
+    const sumOfDigits = (num) => String(num).split('').reduce((acc, d) => acc + parseInt(d, 10), 0);
+    const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
+
+    // --- Part 1: 倍數判定法 (DivisibilityModule) ---
+    const generateDirectDivisibility = () => {
+      const allDivisors = [3, 4, 6, 8, 9];
+      let num, correct, validDivisors, invalidDivisors;
+      do {
+        num = Math.floor(Math.random() * 90000) + 10000; 
+        validDivisors = allDivisors.filter(d => num % d === 0);
+        invalidDivisors = allDivisors.filter(d => num % d !== 0);
+      } while (validDivisors.length === 0 || invalidDivisors.length < 3); 
+      correct = validDivisors[Math.floor(Math.random() * validDivisors.length)];
+      const distractors = invalidDivisors.sort(() => Math.random() - 0.5).slice(0, 3);
+      const options = [correct, ...distractors].sort(() => Math.random() - 0.5);
+      return { num, correct, options };
+    };
+
+    const DivisibilityModule = ({ goHome }) => {
+      const [currentQ, setCurrentQ] = useState(generateDirectDivisibility());
+      const [message, setMessage] = useState({});
+      const [isSolved, setIsSolved] = useState(false);
+
+      useEffect(() => { 
+        setMessage({ text: '請觀察這個數字的特徵，找出它可以被底下哪個數字整除。', type: 'info' });
+        setIsSolved(false);
+      }, [currentQ]);
+
+      const getHintMsg = (wrongChoice, num) => {
+        if (wrongChoice === 3 || wrongChoice === 9) return `數字總和是 ${sumOfDigits(num)}，不是 ${wrongChoice} 的倍數喔！`;
+        if (wrongChoice === 4) return `末兩位數是 ${num % 100}，不能被 4 整除！`;
+        if (wrongChoice === 8) return `末三位數是 ${num % 1000}，不能被 8 整除！`;
+        if (wrongChoice === 6) return num % 2 !== 0 ? '個位數不是偶數，所以絕對不可能是 6 的倍數！' : `雖然是偶數，但數字總和 ${sumOfDigits(num)} 不能被 3 整除！`;
+        return '再試試看！';
+      };
+
+      const handleSelect = (choice) => {
+        if (isSolved) return;
+        if (choice === currentQ.correct) {
+          setIsSolved(true);
+          setMessage({ text: `完全正確！${currentQ.num} 可以被 ${choice} 整除。`, type: 'success' });
+        } else {
+          setMessage({ text: getHintMsg(choice, currentQ.num), type: 'error' });
+        }
+      };
+
+      const nextQuestion = () => {
+        setCurrentQ(generateDirectDivisibility());
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      return (
+        <div className="space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
+          <div className="bg-theme-card p-6 rounded-2xl shadow-sm border border-theme-border">
+            <h2 className="text-xl font-bold text-theme-txtcard mb-2">倍數判定法</h2>
+            <p className="text-theme-txtmuted text-sm mb-6">不除以原數，找出 3, 4, 6, 8, 9 的特徵</p>
+            {message.text && (
+              <div className={`p-4 rounded-xl mb-6 text-sm font-medium msg-${message.type}`}>{message.text}</div>
+            )}
+            <div className="text-center mb-8 py-8 bg-theme-bg rounded-2xl border border-theme-border relative">
+              <div className="text-sm font-bold text-theme-txtmuted mb-2">請問這個數字可以被以下哪個數字整除？</div>
+              <span className="text-5xl font-black text-theme-txtcard tracking-wider">{currentQ.num}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              {currentQ.options.map(opt => (
+                <button key={opt} onClick={() => handleSelect(opt)} 
+                  className={`p-5 font-bold rounded-xl transition-all text-2xl ${isSolved && opt === currentQ.correct ? 'bg-emerald-500 text-white shadow-emerald-200 dark:shadow-none shadow-lg scale-105' : isSolved ? 'bg-theme-bg text-theme-txtmuted opacity-50 border-2 border-theme-border' : 'bg-theme-card border-2 border-theme-border hover:border-orange-400 hover:bg-orange-500/10 text-orange-600 dark:text-orange-400'}`}>
+                  {opt}
+                </button>
+              ))}
+            </div>
+            {isSolved && (
+              <button onClick={nextQuestion} className="w-full mt-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-lg transition-all flex justify-center items-center gap-2 text-lg">
+                <IconRefresh /> 下一題
+              </button>
+            )}
+          </div>
+          <button onClick={goHome} className="w-full py-4 bg-theme-muted text-theme-txtmuted font-bold rounded-xl hover:bg-theme-hover transition-colors">返回主畫面</button>
+        </div>
+      );
+    };
+
+    // --- Part 2: 質因數分解 (PrimeFactModule) ---
+    const generatePrimeFactQuestion = () => {
+      const primes = [2, 2, 2, 3, 3, 3, 5, 5, 7, 11, 13];
+      let num = 1;
+      const factorCount = Math.floor(Math.random() * 3) + 2; 
+      for(let i=0; i<factorCount; i++) {
+        num *= primes[Math.floor(Math.random() * primes.length)];
+      }
+      return { num, original: num };
+    };
+
+    const PrimeFactModule = ({ goHome }) => {
+      const [currentQ, setCurrentQ] = useState(generatePrimeFactQuestion());
+      const availablePrimes = [2, 3, 5, 7, 11, 13, 17, 19];
+      const [userFactors, setUserFactors] = useState({});
+      const [showHint, setShowHint] = useState(false);
+      const [isSolved, setIsSolved] = useState(false);
+      
+      const [history, setHistory] = useState([]); 
+      const [currentNum, setCurrentNum] = useState(0);
+      const [message, setMessage] = useState({});
+
+      useEffect(() => { initQuestion(currentQ); }, [currentQ]);
+
+      const initQuestion = (q) => {
+        setCurrentNum(q.original);
+        setHistory([]);
+        setUserFactors({});
+        setShowHint(false);
+        setIsSolved(false);
+        setMessage({ text: `請選擇下方的質數，組合出 ${q.original} 的標準分解式。若有困難可點擊「提示」使用短除法。`, type: 'info' });
+      };
+
+      const handleAddFactor = (p) => {
+        if(isSolved) return;
+        setUserFactors(prev => ({ ...prev, [p]: (prev[p] || 0) + 1 }));
+      };
+
+      const handleRemoveFactor = (p) => {
+        if(isSolved) return;
+        setUserFactors(prev => {
+          const next = { ...prev };
+          if (next[p] > 1) next[p] -= 1;
+          else delete next[p];
+          return next;
+        });
+      };
+
+      const handleRetry = () => {
+        if (isSolved) return;
+        setUserFactors({});
+        setMessage({ text: '已清空作答，請重新嘗試。', type: 'info' });
+      };
+
+      const checkAnswer = () => {
+        if (Object.keys(userFactors).length === 0) {
+          setMessage({ text: `請先選擇質數建立標準分解式喔！`, type: 'error' });
+          return;
+        }
+        let product = 1;
+        for (let p in userFactors) {
+          product *= Math.pow(parseInt(p), userFactors[p]);
+        }
+        if (product === currentQ.original) {
+          setIsSolved(true);
+          setMessage({ text: `太棒了！完全正確！${currentQ.original} 的標準分解式正是如此。`, type: 'success' });
+        } else if (product > currentQ.original) {
+          setMessage({ text: `目前乘積是 ${product}，超過 ${currentQ.original} 囉，請減少一些質數。`, type: 'error' });
+        } else {
+          setMessage({ text: `目前乘積是 ${product}，還不到 ${currentQ.original}，請再增加質數。`, type: 'error' });
+        }
+      };
+
+      const renderUserFactors = () => {
+        const entries = Object.entries(userFactors).map(([p, exp]) => ({ p: parseInt(p), exp })).sort((a,b)=>a.p-b.p);
+        if (entries.length === 0) return <span className="text-theme-txtmuted opacity-70 text-lg">點擊下方質數按鈕開始作答</span>;
+        
+        return entries.map((item, idx) => (
+          <React.Fragment key={item.p}>
+            <button onClick={() => handleRemoveFactor(item.p)} disabled={isSolved} className={`flex items-start transition-colors group relative ${isSolved ? 'text-purple-600 dark:text-purple-400 cursor-default' : 'hover:text-rose-500 cursor-pointer'}`} title={isSolved ? "" : "點擊減少次方"}>
+              {item.p}{item.exp > 1 && <sup className="text-2xl ml-0.5 mt-1">{item.exp}</sup>}
+              {!isSolved && <span className="absolute -top-3 -right-4 bg-rose-500 text-white text-[10px] font-bold w-5 h-5 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center shadow-sm">-1</span>}
+            </button>
+            {idx < entries.length - 1 && <span className="mx-3 text-purple-400/50 flex items-center">×</span>}
+          </React.Fragment>
+        ));
+      };
+
+      const getPrimeHint = (p, num) => {
+        if (p === 2) return `提示：${num} 的個位數不是偶數，不能被 2 整除喔！`;
+        if (p === 3) return `提示：${num} 的數字總和是 ${sumOfDigits(num)}，不是 3 的倍數！`;
+        if (p === 5) return `提示：${num} 的個位數不是 0 或 5！`;
+        return `提示：${num} 無法被 ${p} 整除。`;
+      };
+
+      const handleDivisorSelect = (prime) => {
+        if (currentNum === 1) return;
+        
+        if (currentNum % prime === 0) {
+          const newNum = currentNum / prime;
+          setHistory([...history, { divisor: prime, num: currentNum }]);
+          setCurrentNum(newNum);
+          
+          if (newNum === 1) {
+            setMessage({ text: `短除法完成！現在請把左側找到的質因數，寫成上方的標準分解式。`, type: 'success' });
+          } else {
+            setMessage({ text: `很好！${prime} 成功整除。請繼續觀察剩下的 ${newNum}，還能用哪個質數？`, type: 'success' });
+          }
+        } else {
+          setMessage({ text: getPrimeHint(prime, currentNum), type: 'error' });
+        }
+      };
+
+      const nextQuestion = () => {
+        setCurrentQ(generatePrimeFactQuestion());
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      return (
+        <div className="space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
+          <div className="bg-theme-card p-6 rounded-2xl shadow-sm border border-theme-border">
+            <h2 className="text-xl font-bold text-theme-txtcard mb-2">質因數分解</h2>
+            <p className="text-theme-txtmuted text-sm mb-6">直接挑戰標準分解式，需要時再呼叫短除法支援！</p>
+
+            {message.text && (
+              <div className={`p-4 rounded-xl mb-6 text-sm font-medium msg-${message.type}`}>{message.text}</div>
+            )}
+
+            <div className="text-center mb-6">
+              <div className="text-sm font-bold text-theme-txtmuted mb-2">目標數字</div>
+              <div className="text-5xl font-black text-theme-txtcard tracking-wider">{currentQ.original}</div>
+            </div>
+
+            <div className={`p-6 mb-6 border-2 rounded-2xl text-center shadow-sm transition-all duration-300 ${isSolved ? 'bg-purple-500/10 border-purple-500/20 shadow-purple-100 dark:shadow-none' : 'bg-theme-bg border-theme-border'}`}>
+              <div className={`text-sm font-bold mb-4 tracking-widest ${isSolved ? 'text-purple-600 dark:text-purple-400' : 'text-theme-txtmuted'}`}>標準分解式 (Index Notation)</div>
+              <div className="text-4xl font-black text-purple-600 dark:text-purple-400 flex justify-center items-center flex-wrap min-h-[60px]">
+                {renderUserFactors()}
+              </div>
+            </div>
+
+            {!isSolved ? (
+              <div className="space-y-6 mb-8">
+                <div className="flex gap-2 justify-center flex-wrap">
+                  {availablePrimes.map(prime => (
+                    <button key={prime} onClick={() => handleAddFactor(prime)} className="w-12 h-12 bg-theme-card border-2 border-theme-border hover:border-purple-400 hover:bg-purple-500/10 text-theme-txtcard font-bold rounded-xl transition-all text-lg flex items-center justify-center shadow-sm active:scale-95">
+                      {prime}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  {!showHint && (
+                    <button onClick={() => setShowHint(true)} className="flex-1 py-4 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 font-bold rounded-xl transition-all flex justify-center items-center gap-2">
+                      💡 提示 (開啟短除法)
+                    </button>
+                  )}
+                  <div className="flex flex-1 gap-2">
+                    {Object.keys(userFactors).length > 0 && (
+                      <button onClick={handleRetry} className="px-4 py-4 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 font-bold rounded-xl transition-all flex justify-center items-center gap-2 whitespace-nowrap">
+                        <IconRefresh /> 重試
+                      </button>
+                    )}
+                    <button onClick={checkAnswer} className="flex-1 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg transition-all flex justify-center items-center gap-2">
+                      <IconCheck /> 驗證答案
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <button onClick={nextQuestion} className="w-full mt-4 mb-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-lg transition-all flex justify-center items-center gap-2 text-lg">
+                <IconRefresh /> 下一題
+              </button>
+            )}
+
+            {showHint && !isSolved && (
+              <div className="p-6 bg-theme-bg rounded-2xl border border-theme-border animate-in slide-in-from-top-4 fade-in duration-500">
+                <h3 className="text-center font-bold text-theme-txtmuted mb-6">短除法輔助區</h3>
+                
+                <div className="mb-8 font-mono text-xl">
+                  <div className="flex flex-col items-center">
+                    {history.map((h, i) => (
+                      <div key={i} className="flex items-center w-full max-w-[200px] mb-2 animate-in slide-in-from-top-2">
+                        <div className="w-12 text-right text-purple-600 dark:text-purple-400 font-bold mr-4">{h.divisor}</div>
+                        <div className="flex-1 border-l-2 border-b-2 border-theme-border pl-4 pb-1 text-theme-txtcard">{h.num}</div>
+                      </div>
+                    ))}
+                    <div className="flex items-center w-full max-w-[200px] font-black text-2xl text-theme-txtcard">
+                      <div className="w-12 mr-4"></div>
+                      <div className="flex-1 pl-4 pb-1">{currentNum}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {currentNum !== 1 && (
+                  <div className="space-y-4">
+                    <h4 className="text-center text-sm font-bold text-theme-txtmuted mb-2">點擊選擇能整除 {currentNum} 的質數：</h4>
+                    <div className="flex gap-2 justify-center flex-wrap">
+                      {availablePrimes.map(prime => (
+                        <button key={`hint-${prime}`} onClick={() => handleDivisorSelect(prime)} className="w-12 h-12 bg-theme-card border-2 border-theme-border hover:border-amber-400 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 font-bold rounded-xl transition-all text-lg flex items-center justify-center shadow-sm">
+                          {prime}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+          </div>
+          <button onClick={goHome} className="w-full py-4 bg-theme-muted text-theme-txtmuted font-bold rounded-xl hover:bg-theme-hover transition-colors">返回主畫面</button>
+        </div>
+      );
+    };
+
+    // --- Part 3: 平方根雷達 (SqrtModule) ---
+    const SqrtModule = ({ goHome }) => {
+      const [currentQ, setCurrentQ] = useState(generateSqrtQuestion());
+      const [step, setStep] = useState(1);
+      const [message, setMessage] = useState({});
+
+      function generateSqrtQuestion() {
+        const root = Math.floor(Math.random() * (130 - 30 + 1)) + 30;
+        if (root % 10 === 0) return generateSqrtQuestion(); 
+        
+        const target = root * root;
+        const lastDigit = target % 10;
+        
+        const lowerAnchor = Math.floor(root / 10) * 10;
+        const upperAnchor = lowerAnchor + 10;
+        
+        const rangeOptions = [
+          { L: lowerAnchor - 10, U: lowerAnchor },
+          { L: lowerAnchor, U: upperAnchor },
+          { L: upperAnchor, U: upperAnchor + 10 }
+        ].sort(() => Math.random() - 0.5);
+
+        let correctPair = [];
+        if (lastDigit === 1) correctPair = [1, 9];
+        else if (lastDigit === 4) correctPair = [2, 8];
+        else if (lastDigit === 5) correctPair = [5, 5];
+        else if (lastDigit === 6) correctPair = [4, 6];
+        else if (lastDigit === 9) correctPair = [3, 7];
+
+        const allPairs = [[1,9], [2,8], [5,5], [4,6], [3,7]];
+        const distractors = allPairs.filter(p => p[0] !== correctPair[0]).sort(() => Math.random() - 0.5).slice(0, 2);
+        const pairOptions = [correctPair, ...distractors].sort(() => Math.random() - 0.5);
+
+        const midPointSq = (lowerAnchor + 5) * (lowerAnchor + 5);
+        const isLower = target < midPointSq;
+
+        return { target, root, lastDigit, lowerAnchor, upperAnchor, rangeOptions, pairOptions, correctPair, isLower };
+      }
+
+      useEffect(() => { initQuestion(currentQ); }, [currentQ]);
+
+      const initQuestion = (q) => {
+        setStep(1);
+        setMessage({ text: '第一步：找尋錨點。請判斷這個數字介於哪兩個整十數的平方之間？', type: 'info' });
+      };
+
+      const handleRangeSelect = (r) => {
+        if (r.L === currentQ.lowerAnchor && r.U === currentQ.upperAnchor) {
+          setStep(2);
+          setMessage({ text: `正確！${currentQ.target} 介於 ${currentQ.lowerAnchor}² (${currentQ.lowerAnchor*currentQ.lowerAnchor}) 和 ${currentQ.upperAnchor}² (${currentQ.upperAnchor*currentQ.upperAnchor}) 之間。接下來，請根據尾數篩選出可能的答案。`, type: 'success' });
+        } else {
+          setMessage({ text: `再想想！可以試著算算看 ${r.L}² 和 ${r.U}² 是多少。`, type: 'error' });
+        }
+      };
+
+      const handlePairSelect = (pair) => {
+        if (pair[0] === currentQ.correctPair[0]) {
+          setStep(3);
+          setMessage({ text: `非常好！尾數是 ${currentQ.lastDigit}，所以平方根的尾數一定是 ${pair[0]} 或 ${pair[1]}。最後一步，根據距離判斷哪一個才是真正的答案！`, type: 'success' });
+        } else {
+          setMessage({ text: `提示：什麼數字自己乘自己的尾數會是 ${currentQ.lastDigit} 呢？`, type: 'error' });
+        }
+      };
+
+      const handleFinalSelect = (ans) => {
+        if (ans === currentQ.root) {
+          setStep(4);
+          setMessage({ text: `太精準了！完全命中答案 ${currentQ.root}！這就是數感的威力！`, type: 'success' });
+        } else {
+          setMessage({ text: `提示：觀察原數字 ${currentQ.target}，它距離哪一個錨點更近？`, type: 'error' });
+        }
+      };
+
+      const nextQuestion = () => {
+        setCurrentQ(generateSqrtQuestion());
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      return (
+        <div className="space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
+          <div className="bg-theme-card p-6 rounded-2xl shadow-sm border border-theme-border">
+            <h2 className="text-xl font-bold text-theme-txtcard mb-2">平方根雷達</h2>
+            <p className="text-theme-txtmuted text-sm mb-6">3秒極速估算法 (錨點 ➔ 尾數 ➔ 距離)</p>
+
+            {message.text && (
+              <div className={`p-4 rounded-xl mb-6 text-sm font-medium msg-${message.type}`}>{message.text}</div>
+            )}
+
+            <div className="text-center mb-8 py-6 bg-theme-bg rounded-2xl border border-theme-border relative">
+              <span className="text-4xl font-black text-theme-txtcard tracking-tight">√{currentQ.target}</span>
+              {step >= 2 && (
+                 <div className="absolute top-4 right-4 bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 px-3 py-1 rounded-lg text-sm font-bold animate-pulse">尾數 {currentQ.lastDigit}</div>
+              )}
+            </div>
+
+            {step === 1 && (
+              <div className="space-y-3">
+                {currentQ.rangeOptions.map((r, i) => (
+                  <button key={i} onClick={() => handleRangeSelect(r)} className="w-full py-4 px-6 bg-theme-card border-2 border-theme-border hover:border-emerald-500 hover:bg-emerald-500/10 text-theme-txtcard font-bold rounded-xl transition-all flex justify-between items-center text-lg">
+                    <span>{r.L}</span><span className="text-theme-txtmuted opacity-50">~</span><span>{r.U}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="space-y-3">
+                <h3 className="text-center font-bold text-theme-txtmuted mb-4">目標尾數是 <span className="text-emerald-600 dark:text-emerald-400 text-xl">{currentQ.lastDigit}</span>，可能的平方根尾數是？</h3>
+                {currentQ.pairOptions.map((pair, i) => (
+                  <button key={i} onClick={() => handlePairSelect(pair)} className="w-full py-4 px-6 bg-theme-card border-2 border-theme-border hover:border-emerald-500 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold rounded-xl transition-all text-xl">
+                    {pair[0]} <span className="text-theme-txtmuted text-sm mx-2">或</span> {pair[1]}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {step >= 3 && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center px-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-theme-txtmuted opacity-50">{currentQ.lowerAnchor}</div>
+                    <div className="text-xs text-theme-txtmuted opacity-70">({currentQ.lowerAnchor * currentQ.lowerAnchor})</div>
+                  </div>
+                  <div className="h-1 flex-1 bg-gradient-to-r from-theme-border via-emerald-500/40 to-theme-border mx-4 rounded-full"></div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-theme-txtmuted opacity-50">{currentQ.upperAnchor}</div>
+                    <div className="text-xs text-theme-txtmuted opacity-70">({currentQ.upperAnchor * currentQ.upperAnchor})</div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <button onClick={() => handleFinalSelect(currentQ.lowerAnchor + currentQ.correctPair[0])} disabled={step === 4}
+                    className={`py-6 text-3xl font-black rounded-2xl transition-all ${step === 4 ? (currentQ.lowerAnchor + currentQ.correctPair[0] === currentQ.root ? 'bg-emerald-500 text-white shadow-lg scale-105' : 'bg-theme-bg text-theme-txtmuted opacity-50') : 'bg-theme-card border-2 border-theme-border hover:border-emerald-500 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
+                    {currentQ.lowerAnchor + currentQ.correctPair[0]}
+                  </button>
+                  <button onClick={() => handleFinalSelect(currentQ.lowerAnchor + currentQ.correctPair[1])} disabled={step === 4}
+                    className={`py-6 text-3xl font-black rounded-2xl transition-all ${step === 4 ? (currentQ.lowerAnchor + currentQ.correctPair[1] === currentQ.root ? 'bg-emerald-500 text-white shadow-lg scale-105' : 'bg-theme-bg text-theme-txtmuted opacity-50') : 'bg-theme-card border-2 border-theme-border hover:border-emerald-500 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
+                    {currentQ.lowerAnchor + currentQ.correctPair[1]}
+                  </button>
+                </div>
+                
+                {step === 4 && (
+                  <button onClick={nextQuestion} className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-lg transition-all flex justify-center items-center gap-2 text-lg">
+                    <IconRefresh /> 下一題
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          <button onClick={goHome} className="w-full py-4 bg-theme-muted text-theme-txtmuted font-bold rounded-xl hover:bg-theme-hover transition-colors">返回主畫面</button>
+        </div>
+      );
+    };
+
+    // --- Part 4: 質因數撥珠 (PrimeModule) ---
+    const generateFactorQuestion = () => {
+      const n1 = Math.floor(Math.random() * 12) + 4; 
+      const n2 = Math.floor(Math.random() * 12) + 4; 
+      const b = n1 + n2;
+      const c = n1 * n2;
+      const factors = getPrimeFactors(c);
+      let parity = b % 2 !== 0 ? '一單一雙' : (c % 2 === 0 ? '雙雙' : '單單');
+      return { b, c, factors, n1, n2, parity };
+    };
+
+    const PrimeModule = ({ goHome }) => {
+      const [currentQ, setCurrentQ] = useState(generateFactorQuestion());
+      const [phase, setPhase] = useState(1); 
+      const [blocks, setBlocks] = useState([]);
+      const [message, setMessage] = useState({});
+      const [dragState, setDragState] = useState({ id: null, x: 0, y: 0, isDragging: false });
+
+      useEffect(() => { initQuestion(currentQ); }, [currentQ]);
+
+      const initQuestion = (q) => {
+        setBlocks(q.factors.map((val, i) => ({ id: `b${i}`, val, bin: 0 })));
+        setMessage({ text: `觀察中間項 ${q.b}。請問這兩個乘數的奇偶性為何？`, type: 'info' });
+        setPhase(1);
+        setDragState({ id: null, x: 0, y: 0, isDragging: false });
+      };
+
+      const handleParitySelect = (ans) => {
+        if (ans === currentQ.parity) {
+          setPhase(2);
+          setMessage({ text: `正確！既然是「${ans}」，請把底下的積木分配到兩個籃子中。`, type: 'success' });
+        } else {
+          setMessage({ text: `提示：中間項 ${currentQ.b} 是${currentQ.b % 2 === 0 ? '雙數' : '單數'}，代表兩個數字加起來必須是...`, type: 'error' });
+        }
+      };
+
+      const toggleBin = (blockId, targetBin = null) => {
+        if (phase !== 2) return;
+        setBlocks(blocks.map(b => {
+          if (b.id === blockId) return { ...b, bin: targetBin !== null ? targetBin : (b.bin + 1) % 3 }; 
+          return b;
+        }));
+      };
+
+      const handleDragStart = (e, id) => { if (phase === 2) e.dataTransfer.setData('text/plain', id); };
+      const handleDragOver = (e) => e.preventDefault();
+      const handleDrop = (e, binId) => {
+        e.preventDefault();
+        const id = e.dataTransfer.getData('text/plain');
+        if (id) toggleBin(id, binId);
+      };
+
+      const handleTouchStart = (e, id) => {
+        if (phase !== 2) return;
+        const touch = e.touches[0];
+        setDragState({ id, x: touch.clientX, y: touch.clientY, isDragging: true });
+      };
+      const handleTouchMove = (e) => {
+        if (!dragState.isDragging) return;
+        e.preventDefault(); 
+        const touch = e.touches[0];
+        setDragState(prev => ({ ...prev, x: touch.clientX, y: touch.clientY }));
+      };
+      const handleTouchEnd = (e) => {
+        if (!dragState.isDragging) return;
+        const touch = e.changedTouches[0];
+        const target = document.elementFromPoint(touch.clientX, touch.clientY);
+        const binZone = target?.closest('[data-bin]');
+        if (binZone) toggleBin(dragState.id, parseInt(binZone.getAttribute('data-bin'), 10));
+        else toggleBin(dragState.id); 
+        setDragState({ id: null, x: 0, y: 0, isDragging: false });
+      };
+
+      const checkResult = () => {
+        const bin1Blocks = blocks.filter(b => b.bin === 1);
+        const bin2Blocks = blocks.filter(b => b.bin === 2);
+        
+        if (bin1Blocks.length + bin2Blocks.length < blocks.length) {
+          setMessage({ text: "還有積木沒放進籃子喔！", type: 'error' }); return;
+        }
+        const sum1 = bin1Blocks.reduce((acc, curr) => acc * curr.val, 1) || 0;
+        const sum2 = bin2Blocks.reduce((acc, curr) => acc * curr.val, 1) || 0;
+
+        if (sum1 + sum2 === currentQ.b) {
+          setPhase(3);
+          setMessage({ text: `太棒了！完美分解：(x - ${sum1})(x - ${sum2})`, type: 'success' });
+        } else {
+          setMessage({ text: `目前籃子的總和是 ${sum1} + ${sum2} = ${sum1 + sum2}。再試試看！`, type: 'error' });
+        }
+      };
+
+      const nextQuestion = () => {
+        setCurrentQ(generateFactorQuestion());
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      return (
+        <div className="space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
+          <div className="bg-theme-card p-6 rounded-2xl shadow-sm border border-theme-border relative overflow-hidden">
+            <h2 className="text-xl font-bold text-theme-txtcard mb-2">質因數撥珠</h2>
+            <p className="text-theme-txtmuted text-sm mb-6">目標：分解 x² - {currentQ.b}x + {currentQ.c}</p>
+            
+            {message.text && (
+              <div className={`p-4 rounded-xl mb-6 text-sm font-medium msg-${message.type}`}>{message.text}</div>
+            )}
+
+            {phase === 1 && (
+              <div className="flex gap-4 justify-center">
+                {['一單一雙', '雙雙', '單單'].map(btn => (
+                  <button key={btn} onClick={() => handleParitySelect(btn)} className="px-6 py-3 bg-theme-muted hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 text-theme-txtcard font-bold rounded-xl transition-colors">{btn}</button>
+                ))}
+              </div>
+            )}
+
+            {(phase === 2 || phase === 3) && (
+              <div className="space-y-8 relative">
+                <div className="flex gap-4">
+                  {[1, 2].map(binNum => (
+                    <div key={binNum} data-bin={binNum} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, binNum)}
+                         className={`flex-1 bg-theme-bg rounded-2xl p-4 min-h-[120px] border-2 border-dashed flex flex-wrap gap-2 items-start content-start transition-colors
+                           ${phase === 2 ? 'border-theme-border hover:border-indigo-400 hover:bg-indigo-500/5' : 'border-theme-border opacity-50'}`}>
+                      <div className="w-full text-xs font-bold text-theme-txtmuted mb-2 pointer-events-none">籃子 {binNum}</div>
+                      {blocks.filter(b => b.bin === binNum).map(b => (
+                        <div key={b.id} draggable={phase === 2} onDragStart={(e) => handleDragStart(e, b.id)} onTouchStart={(e) => handleTouchStart(e, b.id)} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onClick={() => toggleBin(b.id)}
+                             className={`w-12 h-12 flex items-center justify-center font-bold rounded-lg shadow-sm select-none bg-indigo-500 text-white cursor-grab hover:scale-105`}
+                             style={{ touchAction: phase === 2 ? 'none' : 'auto' }}>{b.val}</div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+
+                <div data-bin={0} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 0)} className={`bg-theme-muted rounded-2xl p-4 min-h-[80px] flex flex-wrap gap-2 justify-center items-center transition-colors ${phase === 2 ? 'hover:bg-theme-hover' : ''}`}>
+                  {blocks.filter(b => b.bin === 0).length === 0 && phase === 2 && <span className="text-theme-txtmuted text-sm font-medium pointer-events-none">積木已全部分配，請點擊驗證</span>}
+                  {blocks.filter(b => b.bin === 0).map(b => (
+                    <div key={b.id} draggable={phase === 2} onDragStart={(e) => handleDragStart(e, b.id)} onTouchStart={(e) => handleTouchStart(e, b.id)} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onClick={() => toggleBin(b.id)}
+                         className={`w-12 h-12 flex items-center justify-center font-bold rounded-lg shadow-sm select-none bg-theme-card text-indigo-600 dark:text-indigo-400 border-2 border-indigo-500/20 cursor-grab hover:bg-indigo-500/10 hover:scale-105 ${dragState.isDragging && dragState.id === b.id ? 'opacity-20 scale-90' : 'opacity-100'}`}
+                         style={{ touchAction: phase === 2 ? 'none' : 'auto' }}>{b.val}</div>
+                  ))}
+                </div>
+
+                {dragState.isDragging && (
+                  <div className="fixed pointer-events-none z-50 w-12 h-12 bg-indigo-500 text-white rounded-lg font-bold shadow-2xl flex items-center justify-center scale-110 opacity-90" style={{ left: dragState.x - 24, top: dragState.y - 24 }}>
+                    {blocks.find(b => b.id === dragState.id)?.val}
+                  </div>
+                )}
+
+                {phase === 2 && <button onClick={checkResult} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg transition-all flex justify-center items-center gap-2"><IconCheck /> 驗證答案</button>}
+                {phase === 3 && <button onClick={nextQuestion} className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-lg transition-all flex justify-center items-center gap-2"><IconRefresh /> 下一題</button>}
+              </div>
+            )}
+          </div>
+          <button onClick={goHome} className="w-full py-4 bg-theme-muted text-theme-txtmuted font-bold rounded-xl hover:bg-theme-hover transition-colors">返回主畫面</button>
+        </div>
+      );
+    };
+
+    // --- Part 5: 循環軌跡 (CycleModule) ---
+    const cycleData = {
+      2: [2, 4, 8, 6], 3: [3, 9, 7, 1], 4: [4, 6], 5: [5],
+      6: [6], 7: [7, 9, 3, 1], 8: [8, 4, 2, 6], 9: [9, 1]
+    };
+
+    const CycleModule = ({ goHome }) => {
+      const [base, setBase] = useState(3);
+      const [mode, setMode] = useState('mult'); 
+      const [path, setPath] = useState([]);
+      const [stepCount, setStepCount] = useState(0);
+      const [currentVal, setCurrentVal] = useState(0);
+      
+      const [isChallenge, setIsChallenge] = useState(false);
+      const [challengeState, setChallengeState] = useState({ level: 1, steps: 0 });
+      const [challengeQ, setChallengeQ] = useState(null);
+      const [challengeMsg, setChallengeMsg] = useState({});
+
+      useEffect(() => {
+        resetCycle();
+        if (isChallenge) {
+          const randomSteps = mode === 'mult' ? Math.floor(Math.random() * 80) + 40 : Math.floor(Math.random() * 1900) + 120;
+          setChallengeState({ level: 1, steps: randomSteps });
+        }
+      }, [base, mode, isChallenge]);
+
+      useEffect(() => {
+        if (isChallenge && challengeState.steps > 0) {
+          generateQuestionForLevel(base, mode, challengeState.level, challengeState.steps);
+        }
+      }, [challengeState]);
+
+      const resetCycle = () => {
+        setPath([]); setStepCount(0); setCurrentVal(mode === 'exp' ? 1 : 0);
+      };
+
+      const nextStep = () => {
+        let nextVal = mode === 'mult' ? (currentVal + base) % 10 : (stepCount === 0 ? base % 10 : (currentVal * base) % 10);
+        setPath([...path, nextVal]); setCurrentVal(nextVal); setStepCount(prev => prev + 1);
+      };
+
+      const generateCompleteCycle = (b, m) => {
+        let p = []; let cur = m === 'exp' ? 1 : 0; let history = new Set();
+        while (true) {
+          p.push(cur); history.add(cur);
+          let nextVal = m === 'mult' ? (cur + b) % 10 : (p.length === 1 ? b % 10 : (cur * b) % 10);
+          if (history.has(nextVal)) { p.push(nextVal); break; }
+          cur = nextVal;
+          if (p.length > 20) break; 
+        }
+        return p;
+      };
+
+      const generateNumOptions = (ans) => {
+        const opts = new Set([ans]);
+        while (opts.size < 4) opts.add(Math.floor(Math.random() * 10));
+        return Array.from(opts).sort(() => Math.random() - 0.5);
+      };
+
+      const generateQuestionForLevel = (currentBase, currentMode, level, steps) => {
+        setChallengeMsg({});
+        let targetAns, displayQ, correctMsg, hintMsg;
+        let options = [];
+
+        const titlePrefix = level === 1 ? '【第 1 關：尋找週期】' : level === 2 ? '【第 2 關：實戰推演】' : '【第 3 關：概念連結】';
+
+        if (currentMode === 'mult') {
+          const cycleLength = 10 / gcd(currentBase === 0 ? 10 : currentBase, 10);
+          
+          if (level === 1) {
+            targetAns = cycleLength;
+            displayQ = <span><b className="text-pink-400 block mb-2">{titlePrefix}</b>觀察上方圖形，每次跳 <b>{currentBase}</b> 格。請問最少需要連續跳幾次，才會第一次回到起點 0？</span>;
+            correctMsg = `正確！每跳 ${cycleLength} 次就會回到 0，這代表圖形的週期（循環長度）就是 ${cycleLength}。`;
+            hintMsg = `提示：數數看從 0 出發，經過幾個點後會再次踩到 0？`;
+            const opts = new Set([targetAns]);
+            while (opts.size < 4) opts.add(Math.floor(Math.random() * 10) + 1);
+            options = Array.from(opts).sort(() => Math.random() - 0.5);
+
+          } else if (level === 2) {
+            targetAns = (currentBase * steps) % 10;
+            displayQ = <span><b className="text-pink-400 block mb-2">{titlePrefix}</b>觀察圖形，週期是 <b>{cycleLength}</b>。如果連續跳 <b>{steps}</b> 次，利用「除法找餘數」的觀念，最後會停在哪個數字？</span>;
+            correctMsg = `太棒了！週期是 ${cycleLength}，你成功推算出了落點 ${targetAns}！`;
+            hintMsg = `提示：${steps} 除以週期 ${cycleLength}，餘數是多少？餘數代表多跳了幾步！`;
+            options = generateNumOptions(targetAns);
+
+          } else {
+            const finalVal = (currentBase * steps) % 10;
+            targetAns = `${currentBase} × ${steps}`;
+            displayQ = <span><b className="text-pink-400 block mb-2">{titlePrefix}</b>在這個「每次跳 <b>{currentBase}</b> 格」的盤面上連續跳 <b>{steps}</b> 次，最終停在 <b>{finalVal}</b>。<br/><br/>這個落點數字，其實等同於計算哪一道算式的「個位數字」？</span>;
+            correctMsg = `觀念完美！連續加 ${steps} 次本質上就是乘法。圓盤上的落點，正是乘積的個位數字，這就是數感的展現！`;
+            hintMsg = `提示：連續加同一個數字很多次，在數學上我們稱為什麼運算？`;
+            options = [
+              `${currentBase} × ${steps}`,
+              `${currentBase} + ${steps}`,
+              `${currentBase} 的 ${steps} 次方`, 
+              `${steps} ÷ ${currentBase}`
+            ].sort(() => Math.random() - 0.5);
+          }
+        } else {
+          const cycle = cycleData[currentBase];
+          const cycleLen = cycle.length;
+          
+          if (level === 1) {
+            targetAns = cycleLen;
+            displayQ = <span><b className="text-purple-400 block mb-2">{titlePrefix}</b>觀察上方圖形，不斷乘以 <b>{currentBase}</b>。請問這個次方尾數的迴圈，包含幾個不同的數字（週期是多少）？</span>;
+            correctMsg = `正確！這個圖形是由 ${cycleLen} 個頂點組成的封閉迴圈。`;
+            hintMsg = `提示：數數看線條連接了幾個不同的數字點？`;
+            const opts = new Set([targetAns]);
+            while (opts.size < 4) opts.add(Math.floor(Math.random() * 5) + 1);
+            options = Array.from(opts).sort(() => Math.random() - 0.5);
+
+          } else if (level === 2) {
+            targetAns = cycle[(steps - 1) % cycleLen];
+            displayQ = <span><b className="text-purple-400 block mb-2">{titlePrefix}</b>觀察圖形，週期是 <b>{cycleLen}</b>。求 <b>{currentBase} 的 {steps} 次方</b>，其計算結果的個位數字是多少？</span>;
+            correctMsg = `秒殺！指數 ${steps} 配合週期 ${cycleLen}，成功推算出落點是 ${targetAns}！`;
+            hintMsg = `提示：將指數 ${steps} 配合剛才找到的週期長度 ${cycleLen}，利用餘數找答案！`;
+            options = generateNumOptions(targetAns);
+
+          } else {
+            const finalVal = cycle[(steps - 1) % cycleLen];
+            targetAns = 10;
+            displayQ = <span><b className="text-purple-400 block mb-2">{titlePrefix}</b>我們剛算出 {currentBase} 的 {steps} 次方，個位數是 <b>{finalVal}</b>。<br/><br/>在數學上，「求一個數的個位數字」，等同於求這個數除以多少的「餘數」？</span>;
+            correctMsg = `完全正確！十進位系統的本質就是除以 10 的餘數。所以找個位數就是找除以 10 的餘數。`;
+            hintMsg = `提示：任何數字除以 10，剩下來的餘數剛好就是什麼位數？`;
+            options = [2, 5, 10, 100].sort(() => Math.random() - 0.5);
+          }
+        }
+        
+        setChallengeQ({ targetAns, displayQ, options, correctMsg, hintMsg, isSolved: false });
+      };
+
+      const handleChallengeAnswer = (ans) => {
+        if (ans === challengeQ.targetAns) {
+          setChallengeMsg({ text: challengeQ.correctMsg, type: 'success' });
+          setChallengeQ(prev => ({ ...prev, isSolved: true }));
+        } else setChallengeMsg({ text: challengeQ.hintMsg, type: 'error' });
+      };
+
+      const proceedToNextChallengeStep = () => {
+        if (challengeState.level < 3) {
+          setChallengeState(prev => ({ ...prev, level: prev.level + 1 }));
+        } else {
+          const randomSteps = mode === 'mult' ? Math.floor(Math.random() * 80) + 40 : Math.floor(Math.random() * 1900) + 120;
+          setChallengeState({ level: 1, steps: randomSteps });
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      const getCoordsPercentage = (num) => {
+        const angle = (num / 10) * 2 * Math.PI - Math.PI / 2;
+        const radius = 40; 
+        return { x: 50 + radius * Math.cos(angle), y: 50 + radius * Math.sin(angle) };
+      };
+
+      const renderPath = () => {
+        const pathData = isChallenge ? generateCompleteCycle(base, mode) : path;
+        return pathData.map((val, i) => {
+          if (i === 0) return null;
+          const prev = getCoordsPercentage(pathData[i-1]);
+          const curr = getCoordsPercentage(val);
+          return <line key={`line-${i}`} x1={`${prev.x}%`} y1={`${prev.y}%`} x2={`${curr.x}%`} y2={`${curr.y}%`} stroke="currentColor" className={mode === 'mult' ? "text-pink-400/60" : "text-purple-400/60"} strokeWidth="1.5" strokeLinecap="round" />;
+        });
+      };
+
+      return (
+        <div className="space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
+          <div className="bg-theme-card p-6 rounded-2xl shadow-sm border border-theme-border relative">
+            <h2 className="text-xl font-bold text-theme-txtcard mb-2">循環軌跡</h2>
+            <p className="text-theme-txtmuted text-sm mb-6">探索尾數的封閉迴圈規律</p>
+            
+            <div className="flex gap-2 mb-6 bg-theme-muted p-1 rounded-xl">
+              <button onClick={() => setMode('mult')} className={`flex-1 py-2 font-bold rounded-lg text-sm transition-colors ${mode === 'mult' ? 'bg-theme-card text-pink-400 shadow-sm' : 'text-theme-txtmuted hover:text-theme-txtcard'}`}>每次加 n (乘法表)</button>
+              <button onClick={() => setMode('exp')} className={`flex-1 py-2 font-bold rounded-lg text-sm transition-colors ${mode === 'exp' ? 'bg-theme-card text-purple-400 shadow-sm' : 'text-theme-txtmuted hover:text-theme-txtcard'}`}>每次乘 n (指數)</button>
+            </div>
+
+            <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
+              {[2,3,4,5,6,7,8,9].map(n => (
+                <button key={n} onClick={() => setBase(n)} className={`w-10 h-10 shrink-0 rounded-full font-bold transition-transform ${base === n ? (mode === 'mult' ? 'bg-pink-400' : 'bg-purple-400') + ' text-white scale-110 shadow-md' : 'bg-theme-muted text-theme-txtmuted hover:bg-theme-hover'}`}>{n}</button>
+              ))}
+            </div>
+
+            <div className="flex flex-col md:flex-row items-center justify-center gap-8 mb-8">
+              <div className="relative w-full aspect-square max-w-[280px] bg-theme-bg rounded-full border-4 border-theme-border shrink-0">
+                <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
+                  {renderPath()}
+                </svg>
+                
+                {[0,1,2,3,4,5,6,7,8,9].map(n => {
+                  const coords = getCoordsPercentage(n);
+                  const isActive = currentVal === n && !isChallenge;
+                  const isIdentity = (mode === 'mult' && n === 0) || (mode === 'exp' && n === 1);
+                  return (
+                    <div key={n} className={`absolute w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all duration-300 z-10 ${isActive ? (mode === 'mult' ? 'bg-pink-400 shadow-pink-200' : 'bg-purple-400 shadow-purple-200') + ' text-white scale-125 shadow-lg' : isIdentity ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400 border-2 border-amber-500/40' : 'bg-theme-card text-theme-txtmuted border border-theme-border'}`} 
+                         style={{ left: `${coords.x}%`, top: `${coords.y}%`, transform: 'translate(-50%, -50%)' }}>
+                      {n}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {mode === 'mult' && (
+                <div className="w-full max-w-[280px] shrink-0 animate-in zoom-in duration-300">
+                  <div className="text-center text-xs font-bold text-pink-500 mb-3 bg-pink-500/10 rounded-lg py-1.5 border border-pink-500/20 shadow-sm">
+                    1-100 數表：觀察 {base} 的倍數規律
+                  </div>
+                  <div className="grid grid-cols-10 gap-[1px] bg-theme-border p-[1px] rounded-lg shadow-sm">
+                    {Array.from({ length: 100 }, (_, i) => i + 1).map(num => {
+                      const isMultiple = num % base === 0;
+                      const currentActualVal = stepCount > 0 ? stepCount * base : 0;
+                      const isCurrent = !isChallenge && num === currentActualVal;
+                      return (
+                        <div 
+                          key={num} 
+                          className={`aspect-square flex items-center justify-center text-[10px] sm:text-xs transition-all duration-300 ${
+                            isCurrent ? 'bg-pink-400 text-white scale-110 shadow-md z-10 rounded-sm font-bold' :
+                            isMultiple ? 'bg-pink-500/20 text-pink-600 dark:text-pink-400 font-bold' : 'bg-theme-card text-theme-txtmuted font-medium'
+                          }`}
+                        >
+                          {num}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-center mb-6">
+               <div className="inline-flex bg-theme-muted p-1 rounded-xl">
+                 <button onClick={() => setIsChallenge(false)} className={`px-4 py-2 font-bold rounded-lg text-sm transition-colors ${!isChallenge ? (mode === 'mult' ? 'bg-pink-400' : 'bg-purple-400') + ' text-white shadow-sm' : 'text-theme-txtmuted hover:text-theme-txtcard'}`}>自由探索</button>
+                 <button onClick={() => setIsChallenge(true)} className={`px-4 py-2 font-bold rounded-lg text-sm transition-colors ${isChallenge ? 'bg-amber-500 text-white shadow-sm' : 'text-theme-txtmuted hover:text-theme-txtcard'}`}>實戰挑戰</button>
+               </div>
+            </div>
+
+            {!isChallenge ? (
+              <div className="flex gap-4">
+                <button onClick={resetCycle} className="w-16 h-16 bg-theme-muted hover:bg-theme-hover text-theme-txtmuted rounded-2xl flex items-center justify-center transition-colors shadow-sm"><IconRefresh /></button>
+                <button onClick={nextStep} className={`flex-1 ${mode === 'mult' ? 'bg-pink-400 hover:bg-pink-500' : 'bg-purple-400 hover:bg-purple-500'} text-white font-bold rounded-2xl shadow-lg transition-all active:scale-95 flex justify-center items-center gap-2 text-lg`}>
+                  <IconPlay /> {mode === 'mult' ? `跳一步 (+${base})` : `乘一次 (x${base})`}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4 bg-theme-bg p-5 rounded-2xl border border-theme-border">
+                <h3 className="text-lg font-bold text-theme-txtcard leading-snug">{challengeQ?.displayQ}</h3>
+                
+                {challengeMsg.text && (
+                  <div className={`p-4 rounded-xl text-sm font-medium msg-${challengeMsg.type}`}>{challengeMsg.text}</div>
+                )}
+                
+                {!challengeQ?.isSolved ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    {challengeQ?.options.map(opt => (
+                      <button key={opt} onClick={() => handleChallengeAnswer(opt)} className={`py-4 bg-theme-card border-2 border-theme-border hover:border-${mode === 'mult' ? 'pink' : 'purple'}-400 text-${mode === 'mult' ? 'pink' : 'purple'}-500 font-bold rounded-xl text-lg transition-colors`}>{opt}</button>
+                    ))}
+                  </div>
+                ) : (
+                  <button onClick={proceedToNextChallengeStep} className={`w-full py-4 ${challengeState.level < 3 ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-amber-500 hover:bg-amber-600'} text-white font-bold rounded-xl shadow-lg transition-all flex justify-center items-center gap-2 text-lg`}>
+                    {challengeState.level < 3 ? '下一關 (Next Step)' : '完成！挑戰下一組'} <IconRefresh /> 
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          <button onClick={goHome} className="w-full py-4 bg-theme-muted text-theme-txtmuted font-bold rounded-xl hover:bg-theme-hover transition-colors">返回主畫面</button>
+        </div>
+      );
+    };
+
+    // --- Part 6: 不等式倒數映射 (ReciprocalModule) ---
+    const ReciprocalModule = ({ goHome }) => {
+      const [tab, setTab] = useState(1);
+      const [valA, setValA] = useState(4);
+      const [valB, setValB] = useState(1.5);
+
+      const [centerX, setCenterX] = useState(0);
+      const [zoom, setZoom] = useState(40); 
+      const svgWidth = 800;
+      const svgHeight = 320; 
+      const yAxis = 220;
+
+      const [attachedNode, setAttachedNode] = useState(null); 
+      const [panStart, setPanStart] = useState(null);
+      const svgRef = useRef(null);
+
+      const valToX = useCallback((v) => (svgWidth / 2) + (v - centerX) * zoom, [centerX, zoom]);
+      const xToVal = useCallback((x) => centerX + (x - svgWidth / 2) / zoom, [centerX, zoom]);
+      const formatNum = useCallback((n) => parseFloat(n.toFixed(3)), []);
+
+      const getTicks = () => {
+        const minV = xToVal(0);
+        const maxV = xToVal(svgWidth);
+        const targetStep = 80 / zoom; 
+        const stepOptions = [0.01, 0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100];
+        let step = stepOptions[0];
+        for (let s of stepOptions) {
+          if (s >= targetStep * 0.8) { step = s; break; }
+        }
+        const ticks = [];
+        const start = Math.floor(minV / step) * step;
+        for (let v = start; v <= maxV; v += step) {
+          ticks.push({ val: parseFloat(v.toFixed(3)), isInteger: Number.isInteger(v) });
+        }
+        return { ticks, step };
+      };
+      const { ticks, step } = getTicks();
+
+      const setView = (type) => {
+        if (type === 'global') { setCenterX(0); setZoom(40); }
+        else if (type === 'pos') { setCenterX(3); setZoom(120); }
+        else if (type === 'neg') { setCenterX(-3); setZoom(120); }
+        else if (type === 'detail') { setCenterX(0.5); setZoom(500); }
+      };
+
+      useEffect(() => {
+        if (tab === 0) { setValA(2); setView('global'); }
+        else if (tab === 1) { setValA(6); setValB(2); setView('global'); }
+        else if (tab === 2) { setValA(-2); setValB(-6); setView('global'); }
+        else if (tab === 3) { setValA(5); setValB(-4); setView('global'); }
+      }, [tab]);
+
+      useEffect(() => {
+        const handleGlobalMove = (e) => {
+          if (!attachedNode && !panStart) return;
+          
+          let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+          if (!svgRef.current) return;
+          const rect = svgRef.current.getBoundingClientRect();
+          const svgX = (clientX - rect.left) / rect.width * svgWidth;
+
+          if (panStart) {
+            const dx = svgX - panStart.startX;
+            setCenterX(panStart.startCenterX - dx / zoom);
+            return;
+          }
+
+          if (attachedNode) {
+            let newVal = centerX + (svgX - svgWidth / 2) / zoom;
+            const snapThreshold = step * 0.15;
+            if (Math.abs(newVal - 1) < snapThreshold) newVal = 1;
+            else if (Math.abs(newVal + 1) < snapThreshold) newVal = -1;
+
+            const EPSILON = 0.02;
+            if (Math.abs(newVal) < EPSILON) newVal = newVal < 0 ? -EPSILON : EPSILON;
+            
+            const MAX_VAL = 200;
+            newVal = Math.max(-MAX_VAL, Math.min(newVal, MAX_VAL));
+
+            if (tab === 0) {
+              setValA(newVal);
+            } else {
+              if (attachedNode === 'A') setValA(newVal);
+              if (attachedNode === 'B') setValB(newVal);
+            }
+          }
+        };
+
+        const handleGlobalUp = () => { setPanStart(null); };
+
+        window.addEventListener('mousemove', handleGlobalMove, { passive: false });
+        window.addEventListener('mouseup', handleGlobalUp);
+        window.addEventListener('touchmove', handleGlobalMove, { passive: false });
+        window.addEventListener('touchend', handleGlobalUp);
+        
+        return () => {
+          window.removeEventListener('mousemove', handleGlobalMove);
+          window.removeEventListener('mouseup', handleGlobalUp);
+          window.removeEventListener('touchmove', handleGlobalMove);
+          window.removeEventListener('touchend', handleGlobalUp);
+        };
+      }, [attachedNode, panStart, tab, zoom, centerX, step]);
+
+      const handleSvgPointerDown = (e) => {
+        if (attachedNode) {
+          setAttachedNode(null);
+          return;
+        }
+        if (e.target.tagName === 'circle' && e.target.getAttribute('data-point')) return;
+        
+        let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const rect = svgRef.current.getBoundingClientRect();
+        const svgX = (clientX - rect.left) / rect.width * svgWidth;
+        setPanStart({ startX: svgX, startCenterX: centerX });
+      };
+
+      useEffect(() => {
+        const svg = svgRef.current;
+        const handleWheel = (e) => {
+          e.preventDefault();
+          const zoomFactor = e.deltaY > 0 ? 0.85 : 1.15;
+          setZoom(z => Math.max(10, Math.min(z * zoomFactor, 2000)));
+        };
+        if(svg) svg.addEventListener('wheel', handleWheel, { passive: false });
+        return () => { if(svg) svg.removeEventListener('wheel', handleWheel); };
+      }, []);
+
+      const generateArc = (val) => {
+        const x1 = valToX(val);
+        const y1 = yAxis;
+        const x2 = valToX(1 / val);
+        const y2 = yAxis;
+        const midX = (x1 + x2) / 2;
+        const dist = Math.abs(x1 - x2);
+
+        if (dist < 2) return `M ${x1} ${y1} C ${x1-20} ${y1-40}, ${x1+20} ${y1-40}, ${x1} ${y1}`;
+        const height = Math.min(dist * 0.4, yAxis - 40);
+        return `M ${x1} ${y1} Q ${midX} ${y1 - height * 2} ${x2} ${y1}`;
+      };
+
+      const getFeedbackInfo = () => {
+        if (tab === 0) {
+          const isFixed = Math.abs(valA) === 1;
+          return { text: isFixed ? `發現「不動點」！${valA} 的倒數等於它自己。` : '點擊標籤鎖定，移動游標選擇數值。', type: isFixed ? 'success' : 'info' };
+        }
+        
+        let relOriginal = valA > valB ? '>' : '<';
+        if (valA === valB) relOriginal = '=';
+        let recA = 1/valA; let recB = 1/valB;
+        let relReciprocal = recA > recB ? '>' : '<';
+        if (recA === recB) relReciprocal = '=';
+
+        const isReversed = (relOriginal !== '=' && relOriginal !== relReciprocal);
+        const sameSign = (valA > 0 && valB > 0) || (valA < 0 && valB < 0);
+
+        if (sameSign) {
+          return {
+            text: isReversed ? `觀察：因為 a ${relOriginal} b (同號)，所以次序完全顛倒，不等式方向改變！` : '點擊標籤鎖定點，觀察同號區間內的倒數大小關係變化。',
+            type: isReversed ? 'success' : 'info', isReversed
+          };
+        }
+        
+        return { text: `一正一負：正數倒數必為正，負數必為負。符號不變，弧線永不交叉，不等號方向維持 ${relOriginal}。`, type: 'info', isReversed: false };
+      };
+
+      const feedback = getFeedbackInfo();
+
+      return (
+        <div className="space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
+          <div className="bg-theme-card p-6 rounded-2xl shadow-sm border border-theme-border overflow-hidden relative">
+            <h2 className="text-xl font-bold text-theme-txtcard mb-2">不等式倒數映射</h2>
+            <p className="text-theme-txtmuted text-sm mb-4">感受「次序顛倒」的幾何意義與邊界</p>
+
+            <div className="flex flex-wrap gap-2 mb-4 bg-theme-muted p-1 rounded-xl">
+              {['單點探索', '同正情境', '同負情境', '一正一負'].map((name, i) => (
+                <button key={i} onClick={() => setTab(i)} className={`flex-1 py-2 px-1 font-bold rounded-lg text-xs md:text-sm transition-colors ${tab === i ? 'bg-theme-card text-cyan-600 dark:text-cyan-400 shadow-sm' : 'text-theme-txtmuted hover:text-theme-txtcard'}`}>{name}</button>
+              ))}
+            </div>
+
+            <div className={`p-4 rounded-xl mb-4 text-sm font-medium leading-relaxed msg-${feedback.type}`}>{feedback.text}</div>
+
+            <div className="flex flex-col md:flex-row gap-4 mb-4 relative">
+               <div className={`flex-1 flex items-center justify-center gap-3 md:gap-5 bg-blue-500/10 border-2 p-3 md:p-4 rounded-xl transition-all cursor-pointer relative ${attachedNode === 'A' ? 'border-blue-400 shadow-md scale-[1.02] bg-blue-500/20' : 'border-blue-500/20 hover:border-blue-500/40'}`}
+                    onClick={() => setAttachedNode(prev => prev === 'A' ? null : 'A')} title="點擊切換移動狀態">
+                 <span className="text-blue-600 dark:text-blue-400 font-bold text-lg md:text-xl whitespace-nowrap">{tab === 0 ? 'x' : 'a'} = {formatNum(valA)}</span>
+                 <div className="w-px h-10 bg-blue-500/20 mx-1"></div>
+                 <div className="flex items-center text-blue-600 dark:text-blue-400 font-bold text-lg md:text-xl">
+                   <div className="flex flex-col items-center mx-1">
+                     <span className="text-sm md:text-base leading-none">1</span>
+                     <div className="w-4 md:w-5 h-[2px] bg-blue-500/50 my-[3px]"></div>
+                     <span className="text-sm md:text-base leading-none">{tab === 0 ? 'x' : 'a'}</span>
+                   </div>
+                   <span className="mx-2 md:mx-3">=</span>
+                   <div className="flex flex-col items-center mx-1">
+                     <span className="text-sm md:text-base leading-none">1</span>
+                     <div className="w-auto min-w-[1.2rem] h-[2px] bg-blue-500/50 my-[3px]"></div>
+                     <span className="text-sm md:text-base leading-none">{formatNum(valA)}</span>
+                   </div>
+                   <span className="mx-2 md:mx-3">=</span>
+                   <span>{formatNum(1/valA)}</span>
+                 </div>
+                 {attachedNode === 'A' && <span className="absolute top-2 right-2 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span></span>}
+               </div>
+
+               {tab !== 0 && (
+                 <div className={`flex-1 flex items-center justify-center gap-3 md:gap-5 bg-emerald-500/10 border-2 p-3 md:p-4 rounded-xl transition-all cursor-pointer relative ${attachedNode === 'B' ? 'border-emerald-400 shadow-md scale-[1.02] bg-emerald-500/20' : 'border-emerald-500/20 hover:border-emerald-500/40'}`}
+                      onClick={() => setAttachedNode(prev => prev === 'B' ? null : 'B')} title="點擊切換移動狀態">
+                   <span className="text-emerald-600 dark:text-emerald-400 font-bold text-lg md:text-xl whitespace-nowrap">b = {formatNum(valB)}</span>
+                   <div className="w-px h-10 bg-emerald-500/20 mx-1"></div>
+                   <div className="flex items-center text-emerald-600 dark:text-emerald-400 font-bold text-lg md:text-xl">
+                     <div className="flex flex-col items-center mx-1">
+                       <span className="text-sm md:text-base leading-none">1</span>
+                       <div className="w-4 md:w-5 h-[2px] bg-emerald-500/50 my-[3px]"></div>
+                       <span className="text-sm md:text-base leading-none">b</span>
+                     </div>
+                     <span className="mx-2 md:mx-3">=</span>
+                     <div className="flex flex-col items-center mx-1">
+                       <span className="text-sm md:text-base leading-none">1</span>
+                       <div className="w-auto min-w-[1.2rem] h-[2px] bg-emerald-500/50 my-[3px]"></div>
+                       <span className="text-sm md:text-base leading-none">{formatNum(valB)}</span>
+                     </div>
+                     <span className="mx-2 md:mx-3">=</span>
+                     <span>{formatNum(1/valB)}</span>
+                   </div>
+                   {attachedNode === 'B' && <span className="absolute top-2 right-2 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span></span>}
+                 </div>
+               )}
+            </div>
+
+            {tab !== 0 && (
+              <div className="bg-slate-800 text-slate-100 p-5 rounded-xl mb-4 font-mono flex flex-col justify-center items-center shadow-inner overflow-hidden">
+                <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-2xl md:text-3xl">
+                  <div className="flex items-center">
+                    <span className="text-blue-400">a</span>
+                    <span className="mx-4 text-yellow-400 font-bold">{valA > valB ? '>' : (valA < valB ? '<' : '=')}</span>
+                    <span className="text-emerald-400">b</span>
+                  </div>
+                  
+                  <div className="text-slate-500 text-xl hidden md:block">➡</div>
+                  
+                  <div className={`flex items-center ${feedback.isReversed ? 'animate-pulse text-amber-300 scale-110 origin-center transition-transform' : ''}`}>
+                    <div className="flex flex-col items-center text-blue-400 font-bold">
+                      <span className="text-lg md:text-xl leading-none">1</span>
+                      <div className="w-6 md:w-8 h-[2px] bg-blue-400 my-[3px]"></div>
+                      <span className="text-lg md:text-xl leading-none">a</span>
+                    </div>
+                    
+                    <span className="mx-5 font-bold">{ (1/valA) > (1/valB) ? '>' : ((1/valA) < (1/valB) ? '<' : '=') }</span>
+                    
+                    <div className="flex flex-col items-center text-emerald-400 font-bold">
+                      <span className="text-lg md:text-xl leading-none">1</span>
+                      <div className="w-6 md:w-8 h-[2px] bg-emerald-400 my-[3px]"></div>
+                      <span className="text-lg md:text-xl leading-none">b</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
+              <div className="flex gap-2">
+                <button onClick={() => setView('global')} className="px-3 py-1.5 bg-theme-muted text-theme-txtmuted rounded-lg text-xs font-bold hover:bg-theme-hover">看全局</button>
+                <button onClick={() => setView('pos')} className="px-3 py-1.5 bg-theme-muted text-theme-txtmuted rounded-lg text-xs font-bold hover:bg-theme-hover">看正數</button>
+                <button onClick={() => setView('neg')} className="px-3 py-1.5 bg-theme-muted text-theme-txtmuted rounded-lg text-xs font-bold hover:bg-theme-hover">看負數</button>
+                <button onClick={() => setView('detail')} className="px-3 py-1.5 bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 rounded-lg text-xs font-bold hover:bg-cyan-500/20">🔍 0~1 細節</button>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setZoom(z => Math.min(z * 1.3, 2000))} className="px-3 py-1.5 bg-theme-muted text-theme-txtmuted rounded-lg text-xs font-bold">Zoom In (+)</button>
+                <button onClick={() => setZoom(z => Math.max(z / 1.3, 10))} className="px-3 py-1.5 bg-theme-muted text-theme-txtmuted rounded-lg text-xs font-bold">Zoom Out (-)</button>
+              </div>
+            </div>
+
+            <div className="relative w-full overflow-hidden bg-orange-500/5 rounded-2xl border-2 border-theme-border touch-none cursor-grab active:cursor-grabbing" style={{ aspectRatio: '800/360' }}>
+              <svg ref={svgRef} viewBox={`0 0 ${svgWidth} ${svgHeight}`} className="absolute inset-0 w-full h-full overflow-visible" onPointerDown={handleSvgPointerDown}>
+                <defs>
+                  <marker id="arrowBlue" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto-start-reverse"><path d="M 0 0 L 6 3 L 0 6 z" fill="#3b82f6" /></marker>
+                  <marker id="arrowGreen" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto-start-reverse"><path d="M 0 0 L 6 3 L 0 6 z" fill="#10b981" /></marker>
+                </defs>
+
+                <rect x={valToX(0)} y="0" width={valToX(1) - valToX(0)} height={svgHeight} fill="#c084fc" opacity="0.1" pointerEvents="none" />
+                <rect x={valToX(-1)} y="0" width={valToX(0) - valToX(-1)} height={svgHeight} fill="#c084fc" opacity="0.1" pointerEvents="none" />
+
+                <line x1="0" y1={yAxis} x2={svgWidth} y2={yAxis} stroke="var(--th-txtmuted)" opacity="0.5" strokeWidth="4" strokeLinecap="round" pointerEvents="none" />
+                
+                <g className="text-theme-txtmuted">
+                  {ticks.map(t => (
+                    <g key={t.val} transform={`translate(${valToX(t.val)}, ${yAxis})`} pointerEvents="none">
+                      <line x1="0" y1={t.isInteger ? "-8" : "-4"} x2="0" y2={t.isInteger ? "8" : "4"} stroke="currentColor" strokeWidth={t.isInteger ? "2.5" : "1.5"} />
+                      {t.val !== 0 && <text y="24" textAnchor="middle" fontSize={t.isInteger ? "14" : "11"} fill="currentColor" fontWeight={t.isInteger ? "bold" : "normal"}>{t.val}</text>}
+                      {(t.val === 1 || t.val === -1) && <line x1="0" y1="-230" x2="0" y2="0" stroke="currentColor" opacity="0.3" strokeWidth="1.5" strokeDasharray="4 4" />}
+                    </g>
+                  ))}
+                </g>
+
+                <g transform={`translate(${valToX(0)}, 0)`} pointerEvents="none">
+                  <line x1="0" y1="0" x2="0" y2={svgHeight} stroke="#ef4444" strokeWidth="3" strokeDasharray="6 4" opacity="0.8" />
+                  <rect x="-40" y={yAxis + 10} width="80" height="24" fill="#fee2e2" rx="4" />
+                  <text y={yAxis + 26} textAnchor="middle" fill="#dc2626" fontSize="11" fontWeight="bold">0 (不定義)</text>
+                  <rect x="-45" y="10" width="90" height="26" fill="#fee2e2" rx="4" opacity="0.95" />
+                  <text y="28" textAnchor="middle" fill="#dc2626" fontSize="13" fontWeight="bold">a, b ≠ 0</text>
+                </g>
+
+                {tab !== 0 && (
+                  <g>
+                    <path d={generateArc(valB)} fill="none" stroke="#10b981" strokeWidth="3.5" markerMid="url(#arrowGreen)" opacity="0.85" pointerEvents="none"/>
+                    <circle cx={valToX(1/valB)} cy={yAxis} r="5" fill="#10b981" pointerEvents="none" />
+                    <g transform={`translate(${valToX(valB)}, ${yAxis})`}>
+                      <circle cx="0" cy="0" r="32" fill="transparent" cursor="pointer" data-point="B" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setAttachedNode(prev => prev === 'B' ? null : 'B'); }} />
+                      <circle cx="0" cy="0" r="14" fill="#10b981" stroke="var(--th-bg)" strokeWidth="3" pointerEvents="none" />
+                      {attachedNode === 'B' && <circle cx="0" cy="0" r="22" fill="none" stroke="#10b981" strokeWidth="2.5" strokeDasharray="5 3" className="animate-[spin_3s_linear_infinite]" pointerEvents="none" />}
+                    </g>
+                  </g>
+                )}
+
+                <g>
+                  <path d={generateArc(valA)} fill="none" stroke="#3b82f6" strokeWidth="3.5" opacity="0.85" pointerEvents="none"/>
+                  <circle cx={valToX(1/valA)} cy={yAxis} r="5" fill="#3b82f6" pointerEvents="none" />
+                  <g transform={`translate(${valToX(valA)}, ${yAxis})`}>
+                    <circle cx="0" cy="0" r="32" fill="transparent" cursor="pointer" data-point="A" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setAttachedNode(prev => prev === 'A' ? null : 'A'); }} />
+                    <circle cx="0" cy="0" r="20" fill="#3b82f6" fillOpacity="0.2" className={Math.abs(valA) === 1 ? 'animate-pulse scale-125' : ''} pointerEvents="none"/>
+                    <circle cx="0" cy="0" r="14" fill="#3b82f6" stroke="var(--th-bg)" strokeWidth="3" pointerEvents="none" />
+                    {attachedNode === 'A' && <circle cx="0" cy="0" r="22" fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeDasharray="5 3" className="animate-[spin_3s_linear_infinite]" pointerEvents="none" />}
+                  </g>
+                </g>
+              </svg>
+            </div>
+            <div className="mt-2 text-xs text-theme-txtmuted opacity-70 text-center">💡 提示：按一下節點開始移動，移到目標後再按一下背景即可固定數值。背景本身可拖曳平移。</div>
+          </div>
+          <button onClick={goHome} className="w-full py-4 bg-theme-muted text-theme-txtmuted font-bold rounded-xl hover:bg-theme-hover transition-colors">返回主畫面</button>
+        </div>
+      );
+    };
+
+    // --- 貓咪裝飾元件 (Cat Watermark for Pink Theme) ---
+    const CatWatermark = ({ theme, view }) => {
+      // 只有在 Pink 主題時才顯示貓咪
+      if (theme !== 'pink') return null;
+
+      // 7 款為各單元量身打造的可愛「貓頭」 (Cat Heads)
+      const cats = {
+        dashboard: (
+          /* 開心微笑的貓頭 (Happy) */
+          <svg viewBox="0 0 100 100" className="w-full h-full">
+            <g fill="var(--th-bg)" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="15,40 10,10 40,25" />
+              <polygon points="85,40 90,10 60,25" />
+              <circle cx="50" cy="55" r="40" />
+            </g>
+            <g stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none">
+              {/* 眼睛 ^ ^ */}
+              <path d="M 30 50 Q 35 40 40 50" />
+              <path d="M 60 50 Q 65 40 70 50" />
+              {/* 嘴巴 w */}
+              <path d="M 43 65 Q 46.5 70 50 65 Q 53.5 70 57 65" />
+              {/* 鼻子 */}
+              <circle cx="50" cy="60" r="2.5" fill="currentColor" stroke="none" />
+              {/* 鬍鬚 */}
+              <line x1="8" y1="50" x2="22" y2="55" />
+              <line x1="8" y1="65" x2="22" y2="60" />
+              <line x1="92" y1="50" x2="78" y2="55" />
+              <line x1="92" y1="65" x2="78" y2="60" />
+            </g>
+          </svg>
+        ),
+        divisibility: (
+          /* 從下方探出頭的好奇貓 (Peeking) */
+          <svg viewBox="0 0 100 100" className="w-full h-full">
+            <g fill="var(--th-bg)" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="20,55 15,25 40,40" />
+              <polygon points="80,55 85,25 60,40" />
+              {/* 只有上半臉 */}
+              <path d="M 10 100 A 40 40 0 0 1 90 100" />
+            </g>
+            {/* 大眼睛 */}
+            <circle cx="35" cy="70" r="8" fill="currentColor" />
+            <circle cx="37" cy="68" r="2.5" fill="var(--th-bg)" />
+            <circle cx="65" cy="70" r="8" fill="currentColor" />
+            <circle cx="67" cy="68" r="2.5" fill="var(--th-bg)" />
+            {/* 小鼻子 */}
+            <polygon points="48,82 52,82 50,85" fill="currentColor" />
+          </svg>
+        ),
+        primefact: (
+          /* 打呼熟睡的貓 (Sleeping) */
+          <svg viewBox="0 0 100 100" className="w-full h-full">
+            <g fill="var(--th-bg)" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="15,45 5,15 35,30" />
+              <polygon points="85,45 95,15 65,30" />
+              <circle cx="50" cy="55" r="40" />
+            </g>
+            <g stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none">
+              {/* 閉著的眼睛 U U */}
+              <path d="M 28 55 Q 35 60 42 55" />
+              <path d="M 58 55 Q 65 60 72 55" />
+              {/* 鼻子 */}
+              <circle cx="50" cy="65" r="2.5" fill="currentColor" stroke="none" />
+              <path d="M 45 70 Q 50 75 55 70" />
+              {/* Zzz 符號 */}
+              <path d="M 72 25 L 85 25 L 72 38 L 85 38" strokeWidth="3" />
+              <path d="M 85 10 L 95 10 L 85 20 L 95 20" strokeWidth="2" />
+            </g>
+          </svg>
+        ),
+        sqrt: (
+          /* 戴方形眼鏡的學霸貓 (Square Glasses for Square root) */
+          <svg viewBox="0 0 100 100" className="w-full h-full">
+            <g fill="var(--th-bg)" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="15,40 10,10 40,25" />
+              <polygon points="85,40 90,10 60,25" />
+              <circle cx="50" cy="55" r="40" />
+            </g>
+            {/* 方形眼鏡 */}
+            <rect x="22" y="42" width="22" height="18" rx="2" fill="none" stroke="currentColor" strokeWidth="4" />
+            <rect x="56" y="42" width="22" height="18" rx="2" fill="none" stroke="currentColor" strokeWidth="4" />
+            <line x1="44" y1="51" x2="56" y2="51" stroke="currentColor" strokeWidth="4" />
+            {/* 眼睛與微笑 */}
+            <circle cx="33" cy="51" r="3" fill="currentColor" />
+            <circle cx="67" cy="51" r="3" fill="currentColor" />
+            <polygon points="48,65 52,65 50,68" fill="currentColor" />
+            <path d="M 45 72 Q 50 75 55 72" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/>
+          </svg>
+        ),
+        prime: (
+          /* 眨眼吐舌頭的俏皮貓 (Winking & Playful) */
+          <svg viewBox="0 0 100 100" className="w-full h-full">
+            <g fill="var(--th-bg)" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="15,40 10,10 40,25" />
+              <polygon points="85,40 90,10 60,25" />
+              <circle cx="50" cy="55" r="40" />
+            </g>
+            <g stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none">
+              {/* 眨眼 > */}
+              <path d="M 28 45 L 38 50 L 28 55" />
+              {/* 睜眼 O */}
+              <circle cx="65" cy="50" r="7" fill="currentColor" stroke="none" />
+              <circle cx="67" cy="48" r="2" fill="var(--th-bg)" stroke="none" />
+              {/* 鼻子 */}
+              <circle cx="50" cy="60" r="2.5" fill="currentColor" stroke="none" />
+              {/* 嘴巴與舌頭 :P */}
+              <path d="M 45 65 Q 50 68 55 65" />
+              <path d="M 47 66 L 47 75 Q 50 82 53 75 L 53 66" fill="currentColor" stroke="none" />
+            </g>
+          </svg>
+        ),
+        cycle: (
+          /* 繞到暈眩的大小眼貓 (Dizzy) */
+          <svg viewBox="0 0 100 100" className="w-full h-full">
+            <g fill="var(--th-bg)" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="15,40 10,10 40,25" />
+              <polygon points="85,40 90,10 60,25" />
+              <circle cx="50" cy="55" r="40" />
+            </g>
+            <g stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none">
+              {/* 大小眼 (Derpy eyes) */}
+              <circle cx="33" cy="50" r="9" fill="none" />
+              <circle cx="33" cy="50" r="3" fill="currentColor" stroke="none" />
+              <circle cx="68" cy="45" r="5" fill="none" />
+              <circle cx="68" cy="45" r="2" fill="currentColor" stroke="none" />
+              {/* 歪掉的波浪嘴巴 */}
+              <path d="M 42 68 Q 46 63 50 68 T 58 68" />
+            </g>
+          </svg>
+        ),
+        reciprocal: (
+          /* 顛倒過來的驚訝貓 (Upside down & Surprised) */
+          <svg viewBox="0 0 100 100" className="w-full h-full">
+            <g transform="rotate(180 50 50)">
+              <g fill="var(--th-bg)" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="15,40 10,10 40,25" />
+                <polygon points="85,40 90,10 60,25" />
+                <circle cx="50" cy="55" r="40" />
+              </g>
+              <g stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none">
+                {/* 瞪大的眼睛 */}
+                <circle cx="33" cy="50" r="7" fill="var(--th-bg)" />
+                <circle cx="33" cy="50" r="3" fill="currentColor" stroke="none" />
+                <circle cx="67" cy="50" r="7" fill="var(--th-bg)" />
+                <circle cx="67" cy="50" r="3" fill="currentColor" stroke="none" />
+                {/* 驚呆的嘴巴 'O' */}
+                <circle cx="50" cy="65" r="4" fill="currentColor" stroke="none" />
+                <circle cx="50" cy="56" r="1.5" fill="currentColor" stroke="none" />
+              </g>
+            </g>
+          </svg>
+        )
+      };
+
+      return (
+        <div key={view} className="fixed bottom-6 right-6 md:bottom-10 md:right-10 w-24 h-24 md:w-32 md:h-32 text-pink-300 opacity-60 pointer-events-none z-0 animate-in zoom-in slide-in-from-bottom-4 duration-700 drop-shadow-sm">
+          {cats[view] || cats['dashboard']}
+        </div>
+      );
+    };
+
+    // --- 主程式進入點 (Main App) ---
+    const NumberSenseApp = () => {
+      const [currentView, setCurrentView] = useState('dashboard');
+      // 預設主題為 'light'
+      const [theme, setTheme] = useState('light');
+
+      useEffect(() => {
+        document.documentElement.setAttribute('data-theme', theme);
+      }, [theme]);
+
+      const navigateTo = (view) => {
+        setCurrentView(view);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
+      return (
+        <div className="min-h-screen pb-10 flex flex-col transition-colors duration-300 relative">
+          <header className="bg-theme-card border-b border-theme-border px-6 py-4 sticky top-0 z-50 shadow-sm transition-colors duration-300">
+            <div className="max-w-4xl mx-auto flex items-center justify-between">
+              <h1 className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg>
+                數感訓練
+              </h1>
+              
+              <div className="flex items-center gap-1 md:gap-3">
+                {/* Theme Switcher */}
+                <div className="flex items-center gap-1 mr-2 bg-theme-bg p-1 rounded-full border border-theme-border">
+                  <button onClick={() => setTheme('light')} className={`p-1.5 md:p-2 rounded-full transition-colors ${theme === 'light' ? 'bg-amber-100 text-amber-500 shadow-sm' : 'text-theme-txtmuted hover:text-theme-txtcard'}`} title="淺色模式"><IconSun /></button>
+                  <button onClick={() => setTheme('dark')} className={`p-1.5 md:p-2 rounded-full transition-colors ${theme === 'dark' ? 'bg-indigo-500/30 text-indigo-300 shadow-sm' : 'text-theme-txtmuted hover:text-theme-txtcard'}`} title="深色模式"><IconMoon /></button>
+                  <button onClick={() => setTheme('pink')} className={`p-1.5 md:p-2 rounded-full transition-colors ${theme === 'pink' ? 'bg-pink-100 text-pink-500 shadow-sm' : 'text-theme-txtmuted hover:text-theme-txtcard'}`} title="淺粉紅模式"><IconPalette /></button>
+                </div>
+
+                {currentView !== 'dashboard' && (
+                  <button onClick={() => navigateTo('dashboard')} className="p-2 text-theme-txtmuted hover:text-blue-600 transition-colors bg-theme-bg rounded-full border border-theme-border"><IconHome /></button>
+                )}
+              </div>
+            </div>
+          </header>
+
+          <main className="max-w-4xl mx-auto p-4 md:p-6 flex-grow w-full relative z-10">
+            {/* 注入隱藏版小貓 */}
+            <CatWatermark theme={theme} view={currentView} />
+
+            {currentView === 'dashboard' && (
+              <div className="animate-in fade-in duration-500">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <button onClick={() => navigateTo('divisibility')} className="w-full text-left bg-theme-card p-5 rounded-2xl shadow-sm hover:shadow-md border border-theme-border hover:border-orange-300 transition-all group active:scale-[0.98]">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">1</div>
+                      <div>
+                        <h3 className="font-bold text-theme-txtcard text-lg">倍數判定法</h3>
+                        <p className="text-sm text-theme-txtmuted mt-1">直覺快問快答，極速識別 3, 4, 6, 8, 9 的特徵。</p>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button onClick={() => navigateTo('primefact')} className="w-full text-left bg-theme-card p-5 rounded-2xl shadow-sm hover:shadow-md border border-theme-border hover:border-purple-300 transition-all group active:scale-[0.98]">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">2</div>
+                      <div>
+                        <h3 className="font-bold text-theme-txtcard text-lg">質因數分解</h3>
+                        <p className="text-sm text-theme-txtmuted mt-1">結合判定法則，準確挑選質因數完成短除法。</p>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button onClick={() => navigateTo('sqrt')} className="w-full text-left bg-theme-card p-5 rounded-2xl shadow-sm hover:shadow-md border border-theme-border hover:border-emerald-300 transition-all group active:scale-[0.98]">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">3</div>
+                      <div>
+                        <h3 className="font-bold text-theme-txtcard text-lg">平方根雷達</h3>
+                        <p className="text-sm text-theme-txtmuted mt-1">無計算機極速估算，錨點與距離的精準定位。</p>
+                      </div>
+                    </div>
+                  </button>
+                  
+                  <button onClick={() => navigateTo('prime')} className="w-full text-left bg-theme-card p-5 rounded-2xl shadow-sm hover:shadow-md border border-theme-border hover:border-indigo-300 transition-all group active:scale-[0.98]">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">4</div>
+                      <div>
+                        <h3 className="font-bold text-theme-txtcard text-lg">質因數撥珠</h3>
+                        <p className="text-sm text-theme-txtmuted mt-1">視覺化因式分解，利用奇偶性瞬間分配質數積木。</p>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button onClick={() => navigateTo('cycle')} className="w-full text-left bg-theme-card p-5 rounded-2xl shadow-sm hover:shadow-md border border-theme-border hover:border-pink-300 transition-all group active:scale-[0.98]">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-pink-500/15 text-pink-600 dark:text-pink-400 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">5</div>
+                      <div>
+                        <h3 className="font-bold text-theme-txtcard text-lg">循環軌跡</h3>
+                        <p className="text-sm text-theme-txtmuted mt-1">探索乘法與指數的尾數封閉迴圈，理解底層規律。</p>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button onClick={() => navigateTo('reciprocal')} className="w-full text-left bg-gradient-to-r from-cyan-500/10 to-blue-500/5 p-5 rounded-2xl shadow-sm hover:shadow-md border border-cyan-500/20 hover:border-cyan-400 transition-all group active:scale-[0.98] relative overflow-hidden md:col-span-2">
+                    <div className="flex items-center gap-4 relative z-10">
+                      <div className="w-12 h-12 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-black text-xl group-hover:scale-110 shadow-inner">6</div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-theme-txtcard text-lg">不等式倒數映射</h3>
+                          <span className="bg-red-500/20 text-red-600 dark:text-red-400 text-[10px] px-2 py-0.5 rounded-full font-bold animate-pulse">NEW</span>
+                        </div>
+                        <p className="text-sm text-theme-txtmuted mt-1">「一即是全，全即是一」—— 鋼鍊</p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+                
+                {/* 設計者署名區塊 */}
+                <div className="mt-12 mb-4 text-center">
+                  <div className="inline-block px-6 py-2 bg-theme-muted text-theme-txtmuted font-medium tracking-wider text-sm shadow-sm border border-theme-border">
+                    App 設計者：Sam HoYee
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {currentView === 'divisibility' && <DivisibilityModule goHome={() => navigateTo('dashboard')} />}
+            {currentView === 'primefact' && <PrimeFactModule goHome={() => navigateTo('dashboard')} />}
+            {currentView === 'sqrt' && <SqrtModule goHome={() => navigateTo('dashboard')} />}
+            {currentView === 'prime' && <PrimeModule goHome={() => navigateTo('dashboard')} />}
+            {currentView === 'cycle' && <CycleModule goHome={() => navigateTo('dashboard')} />}
+            {currentView === 'reciprocal' && <ReciprocalModule goHome={() => navigateTo('dashboard')} />}
+          </main>
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<NumberSenseApp />);
+  </script>
+</body>
+</html>
