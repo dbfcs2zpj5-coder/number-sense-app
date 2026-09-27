@@ -10,6 +10,12 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+  <!-- Vercel Web Analytics -->
+  <script>
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
+
   <script>
     tailwind.config = {
       darkMode: ['class', '[data-theme="dark"]'],
@@ -838,7 +844,7 @@
 
           } else if (level === 2) {
             targetAns = cycle[(steps - 1) % cycleLen];
-            displayQ = <span><b className="text-purple-400 block mb-2">{titlePrefix}</b>觀察圖形，週期是 <b>{cycleLen}</b>。求 <b>{currentBase} 的 {steps} 次方</b>，其計算結果的個位數字是多少？</span>;
+            displayQ = <span><b className="text-purple-400 block mb-2">{titlePrefix}</b>觀察��形，週期是 <b>{cycleLen}</b>。求 <b>{currentBase} 的 {steps} 次方</b>，其計算結果的個位數字是多少？</span>;
             correctMsg = `秒殺！指數 ${steps} 配合週期 ${cycleLen}，成功推算出落點是 ${targetAns}！`;
             hintMsg = `提示：將指數 ${steps} 配合剛才找到的週期長度 ${cycleLen}，利用餘數找答案！`;
             options = generateNumOptions(targetAns);
@@ -928,7 +934,7 @@
               {mode === 'mult' && (
                 <div className="w-full max-w-[280px] shrink-0 animate-in zoom-in duration-300">
                   <div className="text-center text-xs font-bold text-pink-500 mb-3 bg-pink-500/10 rounded-lg py-1.5 border border-pink-500/20 shadow-sm">
-                    1-100 數表：觀察 {base} 的倍數規律
+                    1-100 數���：觀察 {base} 的倍數規律
                   </div>
                   <div className="grid grid-cols-10 gap-[1px] bg-theme-border p-[1px] rounded-lg shadow-sm">
                     {Array.from({ length: 100 }, (_, i) => i + 1).map(num => {
@@ -1167,7 +1173,7 @@
             <p className="text-theme-txtmuted text-sm mb-4">感受「次序顛倒」的幾何意義與邊界</p>
 
             <div className="flex flex-wrap gap-2 mb-4 bg-theme-muted p-1 rounded-xl">
-              {['單點探索', '同正情境', '同負情境', '一正一負'].map((name, i) => (
+              {['單點探索', '同正情境', '���負情境', '一正一負'].map((name, i) => (
                 <button key={i} onClick={() => setTab(i)} className={`flex-1 py-2 px-1 font-bold rounded-lg text-xs md:text-sm transition-colors ${tab === i ? 'bg-theme-card text-cyan-600 dark:text-cyan-400 shadow-sm' : 'text-theme-txtmuted hover:text-theme-txtcard'}`}>{name}</button>
               ))}
             </div>

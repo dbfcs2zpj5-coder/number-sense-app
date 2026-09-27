@@ -1,0 +1,21 @@
+{
+  "name": "number-sense-app",
+  "version": "1.0.0",
+  "description": "Number Sense Training App (數感訓練)",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx serve .",
+    "build": "echo 'No build step required for static HTML'",
+    "lint": "echo 'No linter configured'"
+  },
+  "keywords": [
+    "math",
+    "education",
+    "number-sense"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@vercel/analytics": "^1.3.1"
+  }
+}
