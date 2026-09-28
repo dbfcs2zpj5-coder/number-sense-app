@@ -123,93 +123,47 @@
     const sumOfDigits = (num) => String(num).split('').reduce((acc, d) => acc + parseInt(d, 10), 0);
     const gcd = (a, b) => b === 0 ? a : gcd(b, a % b);
 
-    // --- Part 1: 倍數判定法 (DivisibilityModule) 更新 ---
+    // --- Part 1: 倍數判定法 (DivisibilityModule) ---
     const generateDirectDivisibility = () => {
-      const allDivisors = [2, 3, 4, 5, 6, 8, 9, 11];
-      let num, correctDivisors;
+      const allDivisors = [3, 4, 6, 8, 9];
+      let num, correct, validDivisors, invalidDivisors;
       do {
-        // 生成數字，提高特殊倍數 (如 11, 8, 9) 的出現機率以增加趣味性
-        const type = Math.random();
-        let base = Math.floor(Math.random() * 9000) + 1000;
-        
-        if (type < 0.2) num = base * 11;
-        else if (type < 0.4) num = base * 8;
-        else if (type < 0.6) num = base * 9;
-        else if (type < 0.8) num = base * 6;
-        else num = Math.floor(Math.random() * 90000) + 10000; 
-
-        correctDivisors = allDivisors.filter(d => num % d === 0);
-      } while (correctDivisors.length === 0); // 確保至少有一個答案
-      
-      return { num, correctDivisors, options: allDivisors };
+        num = Math.floor(Math.random() * 90000) + 10000; 
+        validDivisors = allDivisors.filter(d => num % d === 0);
+        invalidDivisors = allDivisors.filter(d => num % d !== 0);
+      } while (validDivisors.length === 0 || invalidDivisors.length < 3); 
+      correct = validDivisors[Math.floor(Math.random() * validDivisors.length)];
+      const distractors = invalidDivisors.sort(() => Math.random() - 0.5).slice(0, 3);
+      const options = [correct, ...distractors].sort(() => Math.random() - 0.5);
+      return { num, correct, options };
     };
 
     const DivisibilityModule = ({ goHome }) => {
       const [currentQ, setCurrentQ] = useState(generateDirectDivisibility());
       const [message, setMessage] = useState({});
       const [isSolved, setIsSolved] = useState(false);
-      const [selectedOpts, setSelectedOpts] = useState([]);
 
       useEffect(() => { 
-        setMessage({ text: '請觀察這個數字的特徵，找出它可以被底下「哪些」數字整除（需選出所有正確答案喔！）。', type: 'info' });
+        setMessage({ text: '請觀察這個數字的特徵，找出它可以被底下哪個數字整除。', type: 'info' });
         setIsSolved(false);
-        setSelectedOpts([]);
       }, [currentQ]);
 
       const getHintMsg = (wrongChoice, num) => {
-        if (wrongChoice === 2) return `個位數是 ${num % 10}，不是偶數，不能被 2 整除！`;
         if (wrongChoice === 3 || wrongChoice === 9) return `數字總和是 ${sumOfDigits(num)}，不是 ${wrongChoice} 的倍數喔！`;
         if (wrongChoice === 4) return `末兩位數是 ${num % 100}，不能被 4 整除！`;
-        if (wrongChoice === 5) return `個位數是 ${num % 10}，不是 0 或 5，不能被 5 整除！`;
         if (wrongChoice === 8) return `末三位數是 ${num % 1000}，不能被 8 整除！`;
-        if (wrongChoice === 6) {
-          if (num % 2 !== 0) return '個位數不是偶數，連 2 都不能整除，絕對不可能是 6 的倍數！';
-          return `雖然是偶數，但數字總和 ${sumOfDigits(num)} 不能被 3 整除，所以不能被 6 整除！`;
-        }
-        if (wrongChoice === 11) {
-          const str = String(num);
-          let odd = 0, even = 0;
-          // 從右到左計算 (個位數為第 1 位 - 奇數位)
-          for (let i = str.length - 1, pos = 1; i >= 0; i--, pos++) {
-            if (pos % 2 !== 0) odd += parseInt(str[i], 10);
-            else even += parseInt(str[i], 10);
-          }
-          const diff = Math.abs(odd - even);
-          return `奇數位和(${odd})與偶數位和(${even})相減的差是 ${diff}，不是 11 的倍數！`;
-        }
+        if (wrongChoice === 6) return num % 2 !== 0 ? '個位數不是偶數，所以絕對不可能是 6 的倍數！' : `雖然是偶數，但數字總和 ${sumOfDigits(num)} 不能被 3 整除！`;
         return '再試試看！';
       };
 
       const handleSelect = (choice) => {
         if (isSolved) return;
-        setSelectedOpts(prev => 
-          prev.includes(choice) ? prev.filter(c => c !== choice) : [...prev, choice]
-        );
-      };
-
-      const checkAnswer = () => {
-        if (selectedOpts.length === 0) {
-          setMessage({ text: '請至少選擇一個倍數！', type: 'error' });
-          return;
+        if (choice === currentQ.correct) {
+          setIsSolved(true);
+          setMessage({ text: `完全正確！${currentQ.num} 可以被 ${choice} 整除。`, type: 'success' });
+        } else {
+          setMessage({ text: getHintMsg(choice, currentQ.num), type: 'error' });
         }
-        
-        // 檢查是否有選錯的
-        const wrong = selectedOpts.find(opt => !currentQ.correctDivisors.includes(opt));
-        if (wrong) {
-          setMessage({ text: getHintMsg(wrong, currentQ.num), type: 'error' });
-          return;
-        }
-
-        // 檢查是否有漏選的
-        const missing = currentQ.correctDivisors.filter(opt => !selectedOpts.includes(opt));
-        if (missing.length > 0) {
-          setMessage({ text: '選的都對，但還漏掉了一些倍數喔！再仔細找找看。', type: 'error' });
-          return;
-        }
-
-        // 全對
-        setIsSolved(true);
-        setMessage({ text: `完全正確！${currentQ.num} 的確是 ${currentQ.correctDivisors.join('、')} 的倍數。`, type: 'success' });
       };
 
       const nextQuestion = () => {
@@ -221,66 +175,26 @@
         <div className="space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
           <div className="bg-theme-card p-6 rounded-2xl shadow-sm border border-theme-border">
             <h2 className="text-xl font-bold text-theme-txtcard mb-2">倍數判定法</h2>
-            <p className="text-theme-txtmuted text-sm mb-6">不除以原數，利用特徵找出隱藏的倍數！</p>
-            
-            {/* 11 的倍數判定法教學區塊 */}
-            <div className="mb-6 bg-blue-500/10 border-l-4 border-blue-500 p-4 rounded-r-xl text-sm">
-              <div className="font-bold text-blue-700 dark:text-blue-400 flex items-center gap-2 mb-2">
-                💡 11 的倍數判定法
-              </div>
-              <p className="text-theme-txtcard leading-relaxed mb-2">
-                將數字從右到左分為奇數位和偶數位。若<strong className="text-blue-600 dark:text-blue-400">「奇數位數字和」與「偶數位數字和」相減的差為 0 或 11 的倍數（註：0 也是任何數的倍數喔！）</strong>，則原數為 11 的倍數。
-              </p>
-              <div className="text-theme-txtmuted font-mono bg-theme-bg p-3 rounded-lg border border-theme-border text-xs sm:text-sm">
-                例子：2816 <br className="sm:hidden" />
-                ➔ 奇數位和 (6+8) 減去 偶數位和 (1+2) <br className="sm:hidden" />
-                = 14 - 3 <br className="sm:hidden" />
-                = 11 <br />
-                差是 11，所以 2816 是 11 的倍數。
-              </div>
-            </div>
-
+            <p className="text-theme-txtmuted text-sm mb-6">不除以原數，找出 3, 4, 6, 8, 9 的特徵</p>
             {message.text && (
               <div className={`p-4 rounded-xl mb-6 text-sm font-medium msg-${message.type}`}>{message.text}</div>
             )}
-            
             <div className="text-center mb-8 py-8 bg-theme-bg rounded-2xl border border-theme-border relative">
-              <div className="text-sm font-bold text-theme-txtmuted mb-2">請問這個數字可以被以下哪些數字整除？</div>
+              <div className="text-sm font-bold text-theme-txtmuted mb-2">請問這個數字可以被以下哪個數字整除？</div>
               <span className="text-5xl font-black text-theme-txtcard tracking-wider">{currentQ.num}</span>
             </div>
-            
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 gap-4">
               {currentQ.options.map(opt => (
-                <button 
-                  key={opt} 
-                  onClick={() => handleSelect(opt)} 
-                  className={`p-4 font-bold rounded-xl transition-all text-xl sm:text-2xl border-2
-                    ${isSolved && currentQ.correctDivisors.includes(opt)
-                      ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg scale-105'
-                      : isSolved
-                        ? 'bg-theme-bg text-theme-txtmuted opacity-40 border-theme-border'
-                        : selectedOpts.includes(opt)
-                          ? 'bg-orange-500 border-orange-500 text-white shadow-md'
-                          : 'bg-theme-card border-theme-border hover:border-orange-400 hover:bg-orange-500/10 text-orange-600 dark:text-orange-400'
-                    }`}
-                >
+                <button key={opt} onClick={() => handleSelect(opt)} 
+                  className={`p-5 font-bold rounded-xl transition-all text-2xl ${isSolved && opt === currentQ.correct ? 'bg-emerald-500 text-white shadow-emerald-200 dark:shadow-none shadow-lg scale-105' : isSolved ? 'bg-theme-bg text-theme-txtmuted opacity-50 border-2 border-theme-border' : 'bg-theme-card border-2 border-theme-border hover:border-orange-400 hover:bg-orange-500/10 text-orange-600 dark:text-orange-400'}`}>
                   {opt}
                 </button>
               ))}
             </div>
-
-            {!isSolved ? (
-              <div className="mt-8">
-                <button onClick={checkAnswer} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg transition-all flex justify-center items-center gap-2 text-lg">
-                  <IconCheck /> 驗證答案
-                </button>
-              </div>
-            ) : (
-              <div className="mt-8">
-                <button onClick={nextQuestion} className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-lg transition-all flex justify-center items-center gap-2 text-lg">
-                  <IconRefresh /> 下一題
-                </button>
-              </div>
+            {isSolved && (
+              <button onClick={nextQuestion} className="w-full mt-8 py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-lg transition-all flex justify-center items-center gap-2 text-lg">
+                <IconRefresh /> 下一題
+              </button>
             )}
           </div>
           <button onClick={goHome} className="w-full py-4 bg-theme-muted text-theme-txtmuted font-bold rounded-xl hover:bg-theme-hover transition-colors">返回主畫面</button>
@@ -655,18 +569,43 @@
       );
     };
 
-    // --- Part 4: 質因數撥珠 (PrimeModule) ---
-    const generateFactorQuestion = () => {
-      const n1 = Math.floor(Math.random() * 12) + 4; 
-      const n2 = Math.floor(Math.random() * 12) + 4; 
-      const b = n1 + n2;
-      const c = n1 * n2;
-      const factors = getPrimeFactors(c);
-      let parity = b % 2 !== 0 ? '一單一雙' : (c % 2 === 0 ? '雙雙' : '單單');
-      return { b, c, factors, n1, n2, parity };
-    };
-
+    // --- Part 4: 質因數撥珠 (PrimeModule) --- 
+    // 已更新：支援所有常數項與中間項的符號變化，並加入符號選擇階段
     const PrimeModule = ({ goHome }) => {
+      // 格式化方程式字串，處理正負號與係數 1 
+      const formatEq = (B, C) => {
+        let eq = "x²";
+        if (B !== 0) {
+          if (B === 1) eq += " + x";
+          else if (B === -1) eq += " - x";
+          else if (B > 0) eq += ` + ${B}x`;
+          else eq += ` - ${Math.abs(B)}x`;
+        }
+        if (C > 0) eq += ` + ${C}`;
+        else if (C < 0) eq += ` - ${Math.abs(C)}`;
+        return eq;
+      };
+
+      const generateFactorQuestion = () => {
+        let n1, n2, sign1, sign2, R1, R2, B, C, factors;
+        do {
+          // 產生 1~12 的絕對值，允許產生包含 1 的根，增加變化
+          n1 = Math.floor(Math.random() * 12) + 1; 
+          n2 = Math.floor(Math.random() * 12) + 1; 
+          sign1 = Math.random() < 0.5 ? 1 : -1;
+          sign2 = Math.random() < 0.5 ? 1 : -1;
+          R1 = n1 * sign1;
+          R2 = n2 * sign2;
+          B = R1 + R2; // 二次項係數 1 時的中間項為兩根和
+          C = R1 * R2; // 常數項為兩根積
+          factors = getPrimeFactors(Math.abs(C));
+        } while (factors.length < 2 || B === 0); // 確保 C 為合數有積木可撥，且避開 B=0 增強鑑別度
+        
+        const parity = Math.abs(B) % 2 === 1 ? '一單一雙' : (Math.abs(C) % 2 === 0 ? '雙雙' : '單單');
+        const signType = C > 0 ? (B > 0 ? '皆正' : '皆負') : '一正一負';
+        return { B, C, factors, R1, R2, parity, signType };
+      };
+
       const [currentQ, setCurrentQ] = useState(generateFactorQuestion());
       const [phase, setPhase] = useState(1); 
       const [blocks, setBlocks] = useState([]);
@@ -677,7 +616,7 @@
 
       const initQuestion = (q) => {
         setBlocks(q.factors.map((val, i) => ({ id: `b${i}`, val, bin: 0 })));
-        setMessage({ text: `觀察中間項 ${q.b}。請問這兩個乘數的奇偶性為何？`, type: 'info' });
+        setMessage({ text: `觀察方程式，中間項是 ${q.B}，常數項是 ${q.C}。請問這兩個乘數的奇偶性為何？`, type: 'info' });
         setPhase(1);
         setDragState({ id: null, x: 0, y: 0, isDragging: false });
       };
@@ -685,21 +624,37 @@
       const handleParitySelect = (ans) => {
         if (ans === currentQ.parity) {
           setPhase(2);
-          setMessage({ text: `正確！既然是「${ans}」，請把底下的積木分配到兩個籃子中。`, type: 'success' });
+          setMessage({ text: `正確！接下來觀察符號。請問這兩個乘數的符號為何？`, type: 'success' });
         } else {
-          setMessage({ text: `提示：中間項 ${currentQ.b} 是${currentQ.b % 2 === 0 ? '雙數' : '單數'}，代表兩個數字加起來必須是...`, type: 'error' });
+          setMessage({ text: `提示：常數項是${Math.abs(currentQ.C) % 2 === 0 ? '偶數' : '奇數'}，中間項是${Math.abs(currentQ.B) % 2 === 0 ? '偶數' : '奇數'}，代表...`, type: 'error' });
         }
       };
 
+      const handleSignSelect = (ans) => {
+        if (ans === currentQ.signType) {
+          setPhase(3);
+          setMessage({ text: `正確！請把底下的積木分配到兩個籃子中，組合出正確的數字。`, type: 'success' });
+        } else {
+          setMessage({ text: `提示：常數項為${currentQ.C > 0 ? '正' : '負'}，相加為${currentQ.B > 0 ? '正' : '負'}，代表兩個數字必須是...`, type: 'error' });
+        }
+      };
+
+      const getBasketSign = (binNum) => {
+        if (currentQ.signType === '皆正') return 1;
+        if (currentQ.signType === '皆負') return -1;
+        // 若為一正一負，讓籃子 1 為正，籃子 2 為負
+        return binNum === 1 ? 1 : -1;
+      };
+
       const toggleBin = (blockId, targetBin = null) => {
-        if (phase !== 2) return;
+        if (phase !== 3) return; // 只有在 phase 3 (拖曳階段) 才可移動積木
         setBlocks(blocks.map(b => {
           if (b.id === blockId) return { ...b, bin: targetBin !== null ? targetBin : (b.bin + 1) % 3 }; 
           return b;
         }));
       };
 
-      const handleDragStart = (e, id) => { if (phase === 2) e.dataTransfer.setData('text/plain', id); };
+      const handleDragStart = (e, id) => { if (phase === 3) e.dataTransfer.setData('text/plain', id); };
       const handleDragOver = (e) => e.preventDefault();
       const handleDrop = (e, binId) => {
         e.preventDefault();
@@ -708,7 +663,7 @@
       };
 
       const handleTouchStart = (e, id) => {
-        if (phase !== 2) return;
+        if (phase !== 3) return;
         const touch = e.touches[0];
         setDragState({ id, x: touch.clientX, y: touch.clientY, isDragging: true });
       };
@@ -735,14 +690,21 @@
         if (bin1Blocks.length + bin2Blocks.length < blocks.length) {
           setMessage({ text: "還有積木沒放進籃子喔！", type: 'error' }); return;
         }
-        const sum1 = bin1Blocks.reduce((acc, curr) => acc * curr.val, 1) || 0;
-        const sum2 = bin2Blocks.reduce((acc, curr) => acc * curr.val, 1) || 0;
+        
+        const sign1 = getBasketSign(1);
+        const sign2 = getBasketSign(2);
 
-        if (sum1 + sum2 === currentQ.b) {
-          setPhase(3);
-          setMessage({ text: `太棒了！完美分解：(x - ${sum1})(x - ${sum2})`, type: 'success' });
+        // 如果籃子為空，代表該乘數絕對值為 1 (1 也是因數)
+        const val1 = (bin1Blocks.length > 0 ? bin1Blocks.reduce((acc, curr) => acc * curr.val, 1) : 1) * sign1;
+        const val2 = (bin2Blocks.length > 0 ? bin2Blocks.reduce((acc, curr) => acc * curr.val, 1) : 1) * sign2;
+
+        if (val1 + val2 === currentQ.B) {
+          setPhase(4);
+          const factor1 = val1 > 0 ? `+ ${val1}` : `- ${Math.abs(val1)}`;
+          const factor2 = val2 > 0 ? `+ ${val2}` : `- ${Math.abs(val2)}`;
+          setMessage({ text: `太棒了！完美分解：(x ${factor1})(x ${factor2})`, type: 'success' });
         } else {
-          setMessage({ text: `目前籃子的總和是 ${sum1} + ${sum2} = ${sum1 + sum2}。再試試看！`, type: 'error' });
+          setMessage({ text: `目前組合是 (${val1}) + (${val2}) = ${val1 + val2}。但我們需要和為 ${currentQ.B}。再試試看！`, type: 'error' });
         }
       };
 
@@ -755,7 +717,7 @@
         <div className="space-y-6 animate-in slide-in-from-bottom-4 fade-in duration-500">
           <div className="bg-theme-card p-6 rounded-2xl shadow-sm border border-theme-border relative overflow-hidden">
             <h2 className="text-xl font-bold text-theme-txtcard mb-2">質因數撥珠</h2>
-            <p className="text-theme-txtmuted text-sm mb-6">目標：分解 x² - {currentQ.b}x + {currentQ.c}</p>
+            <p className="text-theme-txtmuted text-sm mb-6 font-mono font-bold">目標：分解 {formatEq(currentQ.B, currentQ.C)}</p>
             
             {message.text && (
               <div className={`p-4 rounded-xl mb-6 text-sm font-medium msg-${message.type}`}>{message.text}</div>
@@ -764,34 +726,47 @@
             {phase === 1 && (
               <div className="flex gap-4 justify-center">
                 {['一單一雙', '雙雙', '單單'].map(btn => (
-                  <button key={btn} onClick={() => handleParitySelect(btn)} className="px-6 py-3 bg-theme-muted hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 text-theme-txtcard font-bold rounded-xl transition-colors">{btn}</button>
+                  <button key={btn} onClick={() => handleParitySelect(btn)} className="px-6 py-3 bg-theme-muted hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 text-theme-txtcard font-bold rounded-xl transition-colors shadow-sm">{btn}</button>
                 ))}
               </div>
             )}
 
-            {(phase === 2 || phase === 3) && (
-              <div className="space-y-8 relative">
+            {phase === 2 && (
+              <div className="flex gap-4 justify-center">
+                {['皆正', '皆負', '一正一負'].map(btn => (
+                  <button key={btn} onClick={() => handleSignSelect(btn)} className="px-6 py-3 bg-theme-muted hover:bg-indigo-500/10 hover:text-indigo-600 dark:hover:text-indigo-400 text-theme-txtcard font-bold rounded-xl transition-colors shadow-sm">{btn}</button>
+                ))}
+              </div>
+            )}
+
+            {(phase === 3 || phase === 4) && (
+              <div className="space-y-8 relative animate-in zoom-in fade-in duration-300">
                 <div className="flex gap-4">
                   {[1, 2].map(binNum => (
                     <div key={binNum} data-bin={binNum} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, binNum)}
-                         className={`flex-1 bg-theme-bg rounded-2xl p-4 min-h-[120px] border-2 border-dashed flex flex-wrap gap-2 items-start content-start transition-colors
-                           ${phase === 2 ? 'border-theme-border hover:border-indigo-400 hover:bg-indigo-500/5' : 'border-theme-border opacity-50'}`}>
-                      <div className="w-full text-xs font-bold text-theme-txtmuted mb-2 pointer-events-none">籃子 {binNum}</div>
+                         className={`flex-1 bg-theme-bg rounded-2xl p-4 min-h-[120px] border-2 border-dashed flex flex-wrap gap-2 items-start content-start transition-colors relative
+                           ${phase === 3 ? 'border-theme-border hover:border-indigo-400 hover:bg-indigo-500/5' : 'border-theme-border opacity-50'}`}>
+                      <div className="w-full text-xs font-bold text-theme-txtmuted mb-2 pointer-events-none flex justify-between">
+                        <span>籃子 {binNum}</span>
+                        <span className={`text-sm font-black ${getBasketSign(binNum) === 1 ? 'text-indigo-500' : 'text-rose-500'}`}>
+                          {getBasketSign(binNum) === 1 ? '(+)' : '(-)'}
+                        </span>
+                      </div>
                       {blocks.filter(b => b.bin === binNum).map(b => (
-                        <div key={b.id} draggable={phase === 2} onDragStart={(e) => handleDragStart(e, b.id)} onTouchStart={(e) => handleTouchStart(e, b.id)} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onClick={() => toggleBin(b.id)}
+                        <div key={b.id} draggable={phase === 3} onDragStart={(e) => handleDragStart(e, b.id)} onTouchStart={(e) => handleTouchStart(e, b.id)} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onClick={() => toggleBin(b.id)}
                              className={`w-12 h-12 flex items-center justify-center font-bold rounded-lg shadow-sm select-none bg-indigo-500 text-white cursor-grab hover:scale-105`}
-                             style={{ touchAction: phase === 2 ? 'none' : 'auto' }}>{b.val}</div>
+                             style={{ touchAction: phase === 3 ? 'none' : 'auto' }}>{b.val}</div>
                       ))}
                     </div>
                   ))}
                 </div>
 
-                <div data-bin={0} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 0)} className={`bg-theme-muted rounded-2xl p-4 min-h-[80px] flex flex-wrap gap-2 justify-center items-center transition-colors ${phase === 2 ? 'hover:bg-theme-hover' : ''}`}>
-                  {blocks.filter(b => b.bin === 0).length === 0 && phase === 2 && <span className="text-theme-txtmuted text-sm font-medium pointer-events-none">積木已全部分配，請點擊驗證</span>}
+                <div data-bin={0} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, 0)} className={`bg-theme-muted rounded-2xl p-4 min-h-[80px] flex flex-wrap gap-2 justify-center items-center transition-colors ${phase === 3 ? 'hover:bg-theme-hover' : ''}`}>
+                  {blocks.filter(b => b.bin === 0).length === 0 && phase === 3 && <span className="text-theme-txtmuted text-sm font-medium pointer-events-none">積木已全部分配，請點擊驗證</span>}
                   {blocks.filter(b => b.bin === 0).map(b => (
-                    <div key={b.id} draggable={phase === 2} onDragStart={(e) => handleDragStart(e, b.id)} onTouchStart={(e) => handleTouchStart(e, b.id)} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onClick={() => toggleBin(b.id)}
+                    <div key={b.id} draggable={phase === 3} onDragStart={(e) => handleDragStart(e, b.id)} onTouchStart={(e) => handleTouchStart(e, b.id)} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} onClick={() => toggleBin(b.id)}
                          className={`w-12 h-12 flex items-center justify-center font-bold rounded-lg shadow-sm select-none bg-theme-card text-indigo-600 dark:text-indigo-400 border-2 border-indigo-500/20 cursor-grab hover:bg-indigo-500/10 hover:scale-105 ${dragState.isDragging && dragState.id === b.id ? 'opacity-20 scale-90' : 'opacity-100'}`}
-                         style={{ touchAction: phase === 2 ? 'none' : 'auto' }}>{b.val}</div>
+                         style={{ touchAction: phase === 3 ? 'none' : 'auto' }}>{b.val}</div>
                   ))}
                 </div>
 
@@ -801,8 +776,8 @@
                   </div>
                 )}
 
-                {phase === 2 && <button onClick={checkResult} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg transition-all flex justify-center items-center gap-2"><IconCheck /> 驗證答案</button>}
-                {phase === 3 && <button onClick={nextQuestion} className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-lg transition-all flex justify-center items-center gap-2"><IconRefresh /> 下一題</button>}
+                {phase === 3 && <button onClick={checkResult} className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg transition-all flex justify-center items-center gap-2"><IconCheck /> 驗證答案</button>}
+                {phase === 4 && <button onClick={nextQuestion} className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-xl shadow-lg transition-all flex justify-center items-center gap-2"><IconRefresh /> 下一題</button>}
               </div>
             )}
           </div>
@@ -1417,8 +1392,10 @@
       // 只有在 Pink 主題時才顯示貓咪
       if (theme !== 'pink') return null;
 
+      // 7 款為各單元量身打造的可愛「貓頭」 (Cat Heads)
       const cats = {
         dashboard: (
+          /* 開心微笑的貓頭 (Happy) */
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <g fill="var(--th-bg)" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="15,40 10,10 40,25" />
@@ -1426,10 +1403,14 @@
               <circle cx="50" cy="55" r="40" />
             </g>
             <g stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none">
+              {/* 眼睛 ^ ^ */}
               <path d="M 30 50 Q 35 40 40 50" />
               <path d="M 60 50 Q 65 40 70 50" />
+              {/* 嘴巴 w */}
               <path d="M 43 65 Q 46.5 70 50 65 Q 53.5 70 57 65" />
+              {/* 鼻子 */}
               <circle cx="50" cy="60" r="2.5" fill="currentColor" stroke="none" />
+              {/* 鬍鬚 */}
               <line x1="8" y1="50" x2="22" y2="55" />
               <line x1="8" y1="65" x2="22" y2="60" />
               <line x1="92" y1="50" x2="78" y2="55" />
@@ -1438,20 +1419,25 @@
           </svg>
         ),
         divisibility: (
+          /* 從下方探出頭的好奇貓 (Peeking) */
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <g fill="var(--th-bg)" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="20,55 15,25 40,40" />
               <polygon points="80,55 85,25 60,40" />
+              {/* 只有上半臉 */}
               <path d="M 10 100 A 40 40 0 0 1 90 100" />
             </g>
+            {/* 大眼睛 */}
             <circle cx="35" cy="70" r="8" fill="currentColor" />
             <circle cx="37" cy="68" r="2.5" fill="var(--th-bg)" />
             <circle cx="65" cy="70" r="8" fill="currentColor" />
             <circle cx="67" cy="68" r="2.5" fill="var(--th-bg)" />
+            {/* 小鼻子 */}
             <polygon points="48,82 52,82 50,85" fill="currentColor" />
           </svg>
         ),
         primefact: (
+          /* 打呼熟睡的貓 (Sleeping) */
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <g fill="var(--th-bg)" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="15,45 5,15 35,30" />
@@ -1459,25 +1445,31 @@
               <circle cx="50" cy="55" r="40" />
             </g>
             <g stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none">
+              {/* 閉著的眼睛 U U */}
               <path d="M 28 55 Q 35 60 42 55" />
               <path d="M 58 55 Q 65 60 72 55" />
+              {/* 鼻子 */}
               <circle cx="50" cy="65" r="2.5" fill="currentColor" stroke="none" />
               <path d="M 45 70 Q 50 75 55 70" />
+              {/* Zzz 符號 */}
               <path d="M 72 25 L 85 25 L 72 38 L 85 38" strokeWidth="3" />
               <path d="M 85 10 L 95 10 L 85 20 L 95 20" strokeWidth="2" />
             </g>
           </svg>
         ),
         sqrt: (
+          /* 戴方形眼鏡的學霸貓 (Square Glasses for Square root) */
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <g fill="var(--th-bg)" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="15,40 10,10 40,25" />
               <polygon points="85,40 90,10 60,25" />
               <circle cx="50" cy="55" r="40" />
             </g>
+            {/* 方形眼鏡 */}
             <rect x="22" y="42" width="22" height="18" rx="2" fill="none" stroke="currentColor" strokeWidth="4" />
             <rect x="56" y="42" width="22" height="18" rx="2" fill="none" stroke="currentColor" strokeWidth="4" />
             <line x1="44" y1="51" x2="56" y2="51" stroke="currentColor" strokeWidth="4" />
+            {/* 眼睛與微笑 */}
             <circle cx="33" cy="51" r="3" fill="currentColor" />
             <circle cx="67" cy="51" r="3" fill="currentColor" />
             <polygon points="48,65 52,65 50,68" fill="currentColor" />
@@ -1485,6 +1477,7 @@
           </svg>
         ),
         prime: (
+          /* 眨眼吐舌頭的俏皮貓 (Winking & Playful) */
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <g fill="var(--th-bg)" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="15,40 10,10 40,25" />
@@ -1492,16 +1485,21 @@
               <circle cx="50" cy="55" r="40" />
             </g>
             <g stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none">
+              {/* 眨眼 > */}
               <path d="M 28 45 L 38 50 L 28 55" />
+              {/* 睜眼 O */}
               <circle cx="65" cy="50" r="7" fill="currentColor" stroke="none" />
               <circle cx="67" cy="48" r="2" fill="var(--th-bg)" stroke="none" />
+              {/* 鼻子 */}
               <circle cx="50" cy="60" r="2.5" fill="currentColor" stroke="none" />
+              {/* 嘴巴與舌頭 :P */}
               <path d="M 45 65 Q 50 68 55 65" />
               <path d="M 47 66 L 47 75 Q 50 82 53 75 L 53 66" fill="currentColor" stroke="none" />
             </g>
           </svg>
         ),
         cycle: (
+          /* 繞到暈眩的大小眼貓 (Dizzy) */
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <g fill="var(--th-bg)" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="15,40 10,10 40,25" />
@@ -1509,15 +1507,18 @@
               <circle cx="50" cy="55" r="40" />
             </g>
             <g stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none">
+              {/* 大小眼 (Derpy eyes) */}
               <circle cx="33" cy="50" r="9" fill="none" />
               <circle cx="33" cy="50" r="3" fill="currentColor" stroke="none" />
               <circle cx="68" cy="45" r="5" fill="none" />
               <circle cx="68" cy="45" r="2" fill="currentColor" stroke="none" />
+              {/* 歪掉的波浪嘴巴 */}
               <path d="M 42 68 Q 46 63 50 68 T 58 68" />
             </g>
           </svg>
         ),
         reciprocal: (
+          /* 顛倒過來的驚訝貓 (Upside down & Surprised) */
           <svg viewBox="0 0 100 100" className="w-full h-full">
             <g transform="rotate(180 50 50)">
               <g fill="var(--th-bg)" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
@@ -1526,10 +1527,12 @@
                 <circle cx="50" cy="55" r="40" />
               </g>
               <g stroke="currentColor" strokeWidth="4" strokeLinecap="round" fill="none">
+                {/* 瞪大的眼睛 */}
                 <circle cx="33" cy="50" r="7" fill="var(--th-bg)" />
                 <circle cx="33" cy="50" r="3" fill="currentColor" stroke="none" />
                 <circle cx="67" cy="50" r="7" fill="var(--th-bg)" />
                 <circle cx="67" cy="50" r="3" fill="currentColor" stroke="none" />
+                {/* 驚呆的嘴巴 'O' */}
                 <circle cx="50" cy="65" r="4" fill="currentColor" stroke="none" />
                 <circle cx="50" cy="56" r="1.5" fill="currentColor" stroke="none" />
               </g>
@@ -1548,7 +1551,7 @@
     // --- 主程式進入點 (Main App) ---
     const NumberSenseApp = () => {
       const [currentView, setCurrentView] = useState('dashboard');
-      const [theme, setTheme] = useState('light');
+      const [theme, setTheme] = useState('dark');
 
       useEffect(() => {
         document.documentElement.setAttribute('data-theme', theme);
@@ -1569,6 +1572,7 @@
               </h1>
               
               <div className="flex items-center gap-1 md:gap-3">
+                {/* Theme Switcher */}
                 <div className="flex items-center gap-1 mr-2 bg-theme-bg p-1 rounded-full border border-theme-border">
                   <button onClick={() => setTheme('light')} className={`p-1.5 md:p-2 rounded-full transition-colors ${theme === 'light' ? 'bg-amber-100 text-amber-500 shadow-sm' : 'text-theme-txtmuted hover:text-theme-txtcard'}`} title="淺色模式"><IconSun /></button>
                   <button onClick={() => setTheme('dark')} className={`p-1.5 md:p-2 rounded-full transition-colors ${theme === 'dark' ? 'bg-indigo-500/30 text-indigo-300 shadow-sm' : 'text-theme-txtmuted hover:text-theme-txtcard'}`} title="深色模式"><IconMoon /></button>
@@ -1583,6 +1587,7 @@
           </header>
 
           <main className="max-w-4xl mx-auto p-4 md:p-6 flex-grow w-full relative z-10">
+            {/* 注入隱藏版小貓 */}
             <CatWatermark theme={theme} view={currentView} />
 
             {currentView === 'dashboard' && (
@@ -1593,7 +1598,7 @@
                       <div className="w-12 h-12 rounded-xl bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">1</div>
                       <div>
                         <h3 className="font-bold text-theme-txtcard text-lg">倍數判定法</h3>
-                        <p className="text-sm text-theme-txtmuted mt-1">直覺快問快答，極速識別各數字倍數特徵。</p>
+                        <p className="text-sm text-theme-txtmuted mt-1">直覺快問快答，極速識別 3, 4, 6, 8, 9 的特徵。</p>
                       </div>
                     </div>
                   </button>
@@ -1618,12 +1623,15 @@
                     </div>
                   </button>
                   
-                  <button onClick={() => navigateTo('prime')} className="w-full text-left bg-theme-card p-5 rounded-2xl shadow-sm hover:shadow-md border border-theme-border hover:border-indigo-300 transition-all group active:scale-[0.98]">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">4</div>
+                  <button onClick={() => navigateTo('prime')} className="w-full text-left bg-gradient-to-r from-indigo-500/10 to-purple-500/5 p-5 rounded-2xl shadow-sm hover:shadow-md border border-indigo-500/20 hover:border-indigo-400 transition-all group active:scale-[0.98] relative overflow-hidden">
+                    <div className="flex items-center gap-4 relative z-10">
+                      <div className="w-12 h-12 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-black text-xl group-hover:scale-110 shadow-inner transition-transform">4</div>
                       <div>
-                        <h3 className="font-bold text-theme-txtcard text-lg">質因數撥珠</h3>
-                        <p className="text-sm text-theme-txtmuted mt-1">視覺化因式分解，利用奇偶性瞬間分配質數積木。</p>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-theme-txtcard text-lg">質因數撥珠</h3>
+                          <span className="bg-red-500/20 text-red-600 dark:text-red-400 text-[10px] px-2 py-0.5 rounded-full font-bold animate-pulse">UPGRADED</span>
+                        </div>
+                        <p className="text-sm text-theme-txtmuted mt-1">引入全符號十字交乘法，判斷奇偶與正負。</p>
                       </div>
                     </div>
                   </button>
@@ -1638,19 +1646,18 @@
                     </div>
                   </button>
 
-                  <button onClick={() => navigateTo('reciprocal')} className="w-full text-left bg-gradient-to-r from-cyan-500/10 to-blue-500/5 p-5 rounded-2xl shadow-sm hover:shadow-md border border-cyan-500/20 hover:border-cyan-400 transition-all group active:scale-[0.98] relative overflow-hidden md:col-span-2">
-                    <div className="flex items-center gap-4 relative z-10">
-                      <div className="w-12 h-12 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-black text-xl group-hover:scale-110 shadow-inner">6</div>
+                  <button onClick={() => navigateTo('reciprocal')} className="w-full text-left bg-theme-card p-5 rounded-2xl shadow-sm hover:shadow-md border border-theme-border hover:border-cyan-300 transition-all group active:scale-[0.98]">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 flex items-center justify-center font-black text-xl group-hover:scale-110 transition-transform">6</div>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-theme-txtcard text-lg">不等式倒數映射</h3>
-                        </div>
+                        <h3 className="font-bold text-theme-txtcard text-lg">不等式倒數映射</h3>
                         <p className="text-sm text-theme-txtmuted mt-1">「一即是全，全即是一」—— 鋼鍊</p>
                       </div>
                     </div>
                   </button>
                 </div>
                 
+                {/* 設計者署名區塊 */}
                 <div className="mt-12 mb-4 text-center">
                   <div className="inline-block px-6 py-2 bg-theme-muted text-theme-txtmuted font-medium tracking-wider text-sm shadow-sm border border-theme-border">
                     App 設計者：Sam HoYee
